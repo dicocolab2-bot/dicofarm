@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vale Dourado — jogo de fazenda e vilarejo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #22301c;
+    --bg-2: #2c3d23;
+    --panel: #f5ecd0;
+    --panel-dark: #e9dcb4;
+    --soil: #3a2a1c;
+    --ink: #2b2117;
+    --ink-soft: #6b5a44;
+    --meadow: #5c8c3e;
+    --meadow-dark: #446b2c;
+    --gold: #d9a441;
+    --gold-dark: #b9822a;
+    --sky: #5b8fa8;
+    --berry: #b24a3e;
+    --tile: #6fae5a;
+    --tile-dark: #59944a;
+    --radius: 14px;
+    --shadow: 0 3px 0 rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:
+      radial-gradient(ellipse at top, var(--bg-2), var(--bg) 70%);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
+
+  /* ---------- HEADER ---------- */
+  #header{
+    background:var(--soil);
+    color:var(--panel);
+    padding:14px 22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+    border-bottom:4px solid var(--gold-dark);
+  }
+  #header .title-block{display:flex; align-items:baseline; gap:12px;}
+  #header h1{font-size:1.6rem; margin:0; font-weight:800; letter-spacing:.5px;}
+  #header .sub{font-size:.8rem; color:#cbb98d; margin-top:2px;}
+  .level-badge{
+    background:var(--meadow);
+    color:#f5ecd0;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    padding:5px 12px;
+    border-radius:999px;
+    font-size:.85rem;
+    white-space:nowrap;
+  }
+  .xp-track{
+    width:130px; height:8px; background:#00000040; border-radius:99px; overflow:hidden;
+  }
+  .xp-fill{height:100%; background:var(--gold); transition:width .3s ease;}
+  .header-right{display:flex; align-items:center; gap:10px;}
+  .coin-pill{
+    display:flex; align-items:center; gap:8px;
+    background:var(--gold);
+    color:#3a2408;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    padding:7px 16px 7px 10px;
+    border-radius:999px;
+    font-size:1.05rem;
+    box-shadow:var(--shadow);
+  }
+  .icon-btn{
+    background:var(--panel-dark);
+    border:none;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:.8rem;
+    padding:8px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+  }
+  .icon-btn:hover{background:#fff2cf;}
+
+  /* ---------- LAYOUT ---------- */
+  .main{
+    flex:1;
+    display:flex;
+    gap:18px;
+    padding:18px;
+    max-width:1280px;
+    width:100%;
+    margin:0 auto;
+    align-items:flex-start;
+  }
+  #sidebar{
+    background:var(--panel);
+    border-radius:var(--radius);
+    width:300px;
+    flex-shrink:0;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .tabs{
+    display:flex;
+    background:var(--panel-dark);
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:11px 4px;
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:.85rem;
+    cursor:pointer;
+    color:var(--ink-soft);
+    border-bottom:3px solid transparent;
+  }
+  .tab.active{
+    color:var(--ink);
+    border-bottom:3px solid var(--meadow);
+    background:var(--panel);
+  }
+  .sidebar-body{padding:12px; max-height:640px; overflow-y:auto;}
+
+  .build-card, .sell-card, .order-card{
+    background:#fffaf0;
+    border:1px solid #e4d5a8;
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:10px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .build-card.selected{outline:2px solid var(--meadow); background:#f0ffe4;}
+  .build-card.locked{opacity:.55;}
+  .card-icon{font-size:1.6rem; width:36px; text-align:center;}
+  .card-body{flex:1; min-width:0;}
+  .card-title{font-weight:700; font-size:.88rem;}
+  .card-meta{font-size:.72rem; color:var(--ink-soft); margin-top:2px; line-height:1.4;}
+  .card-btn{
+    border:none; border-radius:8px; padding:7px 10px; font-weight:700;
+    font-size:.78rem; cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap;
+  }
+  .card-btn.build{background:var(--meadow); color:#fff;}
+  .card-btn.build:hover{background:var(--meadow-dark);}
+  .card-btn.build:disabled{background:#b9c2ae; cursor:not-allowed;}
+  .card-btn.sell{background:var(--sky); color:#fff;}
+  .card-btn.sell:hover{background:#456f83;}
+  .card-btn.deliver{background:var(--berry); color:#fff;}
+  .card-btn.deliver:disabled{background:#c9a9a4; cursor:not-allowed;}
+  .lock-tag{font-size:.68rem; color:var(--berry); font-weight:700; margin-top:3px;}
+  .empty-hint{font-size:.82rem; color:var(--ink-soft); text-align:center; padding:20px 10px;}
+
+  /* ---------- GRID ---------- */
+  #grid-wrap{
+    flex:1;
+    background:linear-gradient(160deg, #7fbf63, #6aa552 55%, #588e42);
+    border-radius:var(--radius);
+    padding:20px;
+    box-shadow:var(--shadow);
+    min-height:520px;
+  }
+  .placing-banner{
+    background:var(--soil); color:var(--panel);
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:.85rem;
+    padding:8px 14px; border-radius:10px; margin-bottom:14px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .placing-banner button{
+    background:var(--berry); color:#fff; border:none; border-radius:8px;
+    padding:5px 10px; font-weight:700; cursor:pointer; font-size:.75rem;
+  }
+  #grid{
+    display:grid;
+    grid-template-columns:repeat(8, 1fr);
+    gap:9px;
+  }
+  .tile{
+    aspect-ratio:1/1;
+    background:var(--tile);
+    border-radius:10px;
+    border:2px solid var(--tile-dark);
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.6rem;
+    cursor:default;
+    user-select:none;
+    overflow:hidden;
+  }
+  .tile.empty{
+    background:repeating-linear-gradient(45deg, var(--tile), var(--tile) 8px, var(--tile-dark) 8px, var(--tile-dark) 9px);
+  }
+  .tile.empty.placeable{
+    cursor:pointer;
+    box-shadow:inset 0 0 0 3px var(--gold);
+  }
+  .tile.empty.placeable:hover{filter:brightness(1.12);}
+  .tile.occupied.ready{cursor:pointer; animation:pulse 1s infinite;}
+  .tile.occupied.growing, .tile.occupied.processing{cursor:default;}
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(217,164,65,.55);}
+    50%{box-shadow:0 0 0 7px rgba(217,164,65,0);}
+  }
+  .tile .progress-track{
+    position:absolute; left:6%; right:6%; bottom:6px; height:5px;
+    background:rgba(0,0,0,.25); border-radius:99px; overflow:hidden;
+  }
+  .tile .progress-fill{height:100%; background:var(--gold);}
+  .tile .badge{
+    position:absolute; top:3px; right:4px; font-size:.62rem; font-weight:700;
+    background:rgba(0,0,0,.35); color:#fff; padding:1px 5px; border-radius:6px;
+  }
+  .tile .ready-mark{position:absolute; top:2px; left:4px; font-size:.85rem;}
+
+  /* ---------- TOASTS ---------- */
+  #toast-container{
+    position:fixed; top:16px; right:16px; display:flex; flex-direction:column; gap:8px; z-index:50;
+  }
+  .toast{
+    background:var(--soil); color:var(--panel); padding:10px 16px; border-radius:10px;
+    font-weight:600; font-size:.85rem; box-shadow:0 4px 10px rgba(0,0,0,.3);
+    animation:toast-in .25s ease, toast-out .4s ease 2.6s forwards;
+  }
+  @keyframes toast-in{from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:translateY(0);}}
+  @keyframes toast-out{to{opacity:0; transform:translateY(-8px);}}
+
+  .footer-note{
+    text-align:center; color:#cbb98d; font-size:.72rem; padding:10px 0 18px;
+  }
+
+  @media(max-width:820px){
+    .main{flex-direction:column;}
+    #sidebar{width:100%;}
+    #grid{grid-template-columns:repeat(6,1fr);}
+  }
+  @media(max-width:480px){
+    #grid{grid-template-columns:repeat(4,1fr);}
+    #header h1{font-size:1.25rem;}
+  }
+</style>
+</head>
+<body>
+
+<header id="header"></header>
+<div class="main">
+  <aside id="sidebar"></aside>
+  <section id="grid-wrap">
+    <div id="placing-banner-slot"></div>
+    <div id="grid"></div>
+  </section>
+</div>
+<div class="footer-note">Vale Dourado — jogo original, roda 100% offline no navegador. Use Salvar/Carregar para manter seu progresso entre sessões.</div>
+<div id="toast-container"></div>
+<input type="file" id="load-input" hidden accept="application/json">
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ DADOS DO JOGO ============ */
+  const GRID_SIZE = 40;
+
+  const SELL_PRICES = { wheat:2, corn:3, carrot:5, flour:10, egg:8, bread:22 };
+
+  const RESOURCE_INFO = {
+    wheat:{name:'Trigo', icon:'🌾'}, corn:{name:'Milho', icon:'🌽'}, carrot:{name:'Cenoura', icon:'🥕'},
+    flour:{name:'Farinha', icon:'🧂'}, egg:{name:'Ovos', icon:'🥚'}, bread:{name:'Pão', icon:'🍞'}
+  };
+
+  const PLACEABLES = {
+    wheat_field:{ cat:'crop', name:'Campo de Trigo', icon:'🌾', cost:10, growTime:6, yieldRes:'wheat', yieldAmt:3, levelReq:1 },
+    corn_field:{ cat:'crop', name:'Campo de Milho', icon:'🌽', cost:25, growTime:9, yieldRes:'corn', yieldAmt:3, levelReq:2 },
+    carrot_field:{ cat:'crop', name:'Campo de Cenoura', icon:'🥕', cost:45, growTime:13, yieldRes:'carrot', yieldAmt:3, levelReq:3 },
+    mill:{ cat:'factory', name:'Moinho', icon:'⚙️', cost:60, time:5, input:{wheat:3}, outputRes:'flour', outputAmt:2, levelReq:1 },
+    coop:{ cat:'factory', name:'Galinheiro', icon:'🐔', cost:90, time:10, input:{corn:3}, outputRes:'egg', outputAmt:3, levelReq:2 },
+    bakery:{ cat:'factory', name:'Padaria', icon:'🍞', cost:150, time:9, input:{flour:2, egg:1}, outputRes:'bread', outputAmt:2, levelReq:3 },
+  };
+
+  const RESOURCE_MIN_LEVEL = { wheat:1, flour:1, corn:2, egg:2, carrot:3, bread:3 };
+
+  const LEVEL_THRESHOLDS = [0, 150, 400, 900, 1800, 3200, 5200];
+
+  /* ============ ESTADO ============ */
+  let state = {
+    coins: 150,
+    totalEarned: 150,
+    resources: { wheat:0, corn:0, carrot:0, flour:0, egg:0, bread:0 },
+    grid: Array.from({length:GRID_SIZE}, () => ({ key:null })),
+    orders: [],
+    nextOrderIn: 8,
+    selectedBuild: null,
+    activeTab: 'build',
+  };
+
+  let orderIdCounter = 1;
+
+  /* ============ HELPERS ============ */
+  function getLevel(){
+    let lvl = 1;
+    for(let i=1;i<LEVEL_THRESHOLDS.length;i++){
+      if(state.totalEarned >= LEVEL_THRESHOLDS[i]) lvl = i+1;
+    }
+    return Math.min(lvl, LEVEL_THRESHOLDS.length);
+  }
+  function xpProgress(){
+    const lvl = getLevel();
+    const idx = lvl-1;
+    const cur = LEVEL_THRESHOLDS[idx] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length-1];
+    const next = LEVEL_THRESHOLDS[idx+1];
+    if(next === undefined) return 100;
+    const span = next - cur;
+    return Math.max(0, Math.min(100, ((state.totalEarned - cur)/span)*100));
+  }
+  function fmt(n){ return Math.floor(n).toLocaleString('pt-BR'); }
+  function toast(msg){
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className='toast'; el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(()=> el.remove(), 3000);
+  }
+  function hasEnough(inputDict){
+    return Object.entries(inputDict).every(([res,qty]) => state.resources[res] >= qty);
+  }
+  function consume(inputDict){
+    Object.entries(inputDict).forEach(([res,qty]) => state.resources[res] -= qty);
+  }
+
+  /* ============ LOOP PRINCIPAL ============ */
+  let lastTick = Date.now();
+  function tick(){
+    const now = Date.now();
+    const dt = (now - lastTick)/1000;
+    lastTick = now;
+
+    state.grid.forEach(tile => {
+      if(!tile.key) return;
+      const def = PLACEABLES[tile.key];
+      if(tile.stage === 'growing' || tile.stage === 'processing'){
+        tile.progress += dt / (def.growTime || def.time);
+        if(tile.progress >= 1){
+          tile.progress = 1;
+          tile.stage = 'ready';
+        }
+      } else if(tile.stage === 'idle' && def.cat === 'factory'){
+        if(hasEnough(def.input)){
+          consume(def.input);
+          tile.stage = 'processing';
+          tile.progress = 0;
+        }
+      }
+    });
+
+    state.nextOrderIn -= dt;
+    if(state.nextOrderIn <= 0){
+      if(state.orders.length < 3) generateOrder();
+      state.nextOrderIn = 25 + Math.random()*10;
+    }
+
+    renderHeader();
+    renderGrid();
+  }
+
+  /* ============ AÇÕES ============ */
+  function selectBuild(key){
+    const def = PLACEABLES[key];
+    if(getLevel() < def.levelReq) return;
+    state.selectedBuild = (state.selectedBuild === key) ? null : key;
+    renderAll();
+  }
+
+  function clickTile(index){
+    const tile = state.grid[index];
+    const def = tile.key ? PLACEABLES[tile.key] : null;
+
+    if(!tile.key){
+      if(!state.selectedBuild) return;
+      const bdef = PLACEABLES[state.selectedBuild];
+      if(state.coins < bdef.cost) { toast('Moedas insuficientes.'); return; }
+      state.coins -= bdef.cost;
+      tile.key = state.selectedBuild;
+      tile.progress = 0;
+      tile.stage = bdef.cat === 'crop' ? 'growing' : 'idle';
+      toast(`${bdef.icon} ${bdef.name} construído!`);
+      renderAll();
+      return;
+    }
+
+    if(tile.stage === 'ready'){
+      if(def.cat === 'crop'){
+        state.resources[def.yieldRes] += def.yieldAmt;
+        toast(`+${def.yieldAmt} ${RESOURCE_INFO[def.yieldRes].icon} ${RESOURCE_INFO[def.yieldRes].name}`);
+        tile.stage = 'growing';
+        tile.progress = 0;
+      } else {
+        state.resources[def.outputRes] += def.outputAmt;
+        toast(`+${def.outputAmt} ${RESOURCE_INFO[def.outputRes].icon} ${RESOURCE_INFO[def.outputRes].name}`);
+        tile.stage = 'idle';
+        tile.progress = 0;
+      }
+      renderAll();
+    }
+  }
+
+  function sellResource(res){
+    const qty = state.resources[res];
+    if(qty <= 0) return;
+    const gain = qty * SELL_PRICES[res];
+    state.resources[res] = 0;
+    state.coins += gain;
+    state.totalEarned += gain;
+    toast(`Vendido: +${fmt(gain)} 🪙`);
+    renderAll();
+  }
+
+  function generateOrder(){
+    const pool = Object.keys(RESOURCE_MIN_LEVEL).filter(r => RESOURCE_MIN_LEVEL[r] <= getLevel());
+    const res = pool[Math.floor(Math.random()*pool.length)];
+    const qty = 3 + Math.floor(Math.random()*5);
+    const reward = Math.round(qty * SELL_PRICES[res] * 1.7);
+    state.orders.push({ id: orderIdCounter++, res, qty, reward });
+  }
+
+  function deliverOrder(id){
+    const order = state.orders.find(o => o.id === id);
+    if(!order) return;
+    if(state.resources[order.res] < order.qty){ toast('Recursos insuficientes.'); return; }
+    state.resources[order.res] -= order.qty;
+    state.coins += order.reward;
+    state.totalEarned += order.reward;
+    state.orders = state.orders.filter(o => o.id !== id);
+    toast(`Encomenda entregue! +${fmt(order.reward)} 🪙`);
+    renderAll();
+  }
+
+  function setTab(tab){ state.activeTab = tab; renderSidebar(); }
+
+  /* ============ RENDER ============ */
+  function renderHeader(){
+    const lvl = getLevel();
+    document.getElementById('header').innerHTML = `
+      <div class="title-block">
+        <div>
+          <h1>🏡 Vale Dourado</h1>
+          <div class="sub">Plante, produza e cumpra encomendas</div>
+        </div>
+        <div>
+          <div class="level-badge">Nível ${lvl}</div>
+          <div class="xp-track" style="margin-top:6px;"><div class="xp-fill" style="width:${xpProgress()}%"></div></div>
+        </div>
+      </div>
+      <div class="header-right">
+        ${Object.keys(RESOURCE_INFO).map(r => `
+          <div title="${RESOURCE_INFO[r].name}" style="font-size:.8rem; color:#e8dcb8; display:flex; gap:4px; align-items:center;">
+            <span>${RESOURCE_INFO[r].icon}</span><span>${fmt(state.resources[r])}</span>
+          </div>`).join('')}
+        <div class="coin-pill">🪙 ${fmt(state.coins)}</div>
+        <button class="icon-btn" data-action="save">💾 Salvar</button>
+        <button class="icon-btn" data-action="load">📂 Carregar</button>
+      </div>
+    `;
+  }
+
+  function renderSidebar(){
+    const lvl = getLevel();
+    let body = '';
+
+    if(state.activeTab === 'build'){
+      body = Object.entries(PLACEABLES).map(([key,def]) => {
+        const locked = lvl < def.levelReq;
+        const selected = state.selectedBuild === key;
+        const costLine = def.cat === 'crop'
+          ? `Colheita: +${def.yieldAmt} ${RESOURCE_INFO[def.yieldRes].icon} a cada ${def.growTime}s`
+          : `Usa ${Object.entries(def.input).map(([r,q])=>`${q} ${RESOURCE_INFO[r].icon}`).join(' + ')} → +${def.outputAmt} ${RESOURCE_INFO[def.outputRes].icon}`;
+        return `
+          <div class="build-card ${selected?'selected':''} ${locked?'locked':''}">
+            <div class="card-icon">${def.icon}</div>
+            <div class="card-body">
+              <div class="card-title">${def.name}</div>
+              <div class="card-meta">${costLine}</div>
+              ${locked ? `<div class="lock-tag">🔒 Desbloqueia no nível ${def.levelReq}</div>` : ''}
+            </div>
+            <button class="card-btn build" data-build-key="${key}" ${locked?'disabled':''}>
+              ${selected ? 'Selecionado' : `🪙 ${def.cost}`}
+            </button>
+          </div>`;
+      }).join('');
+    }
+
+    if(state.activeTab === 'sell'){
+      const any = Object.keys(RESOURCE_INFO).some(r => state.resources[r] > 0);
+      body = any ? Object.keys(RESOURCE_INFO).map(r => {
+        const qty = state.resources[r];
+        if(qty <= 0) return '';
+        return `
+          <div class="sell-card">
+            <div class="card-icon">${RESOURCE_INFO[r].icon}</div>
+            <div class="card-body">
+              <div class="card-title">${RESOURCE_INFO[r].name}</div>
+              <div class="card-meta">${fmt(qty)} em estoque · ${SELL_PRICES[r]} 🪙 cada</div>
+            </div>
+            <button class="card-btn sell" data-sell-res="${r}">Vender (+${fmt(qty*SELL_PRICES[r])})</button>
+          </div>`;
+      }).join('') : `<div class="empty-hint">Colha ou produza recursos para poder vendê-los aqui.</div>`;
+    }
+
+    if(state.activeTab === 'orders'){
+      body = state.orders.length ? state.orders.map(o => {
+        const can = state.resources[o.res] >= o.qty;
+        return `
+          <div class="order-card">
+            <div class="card-icon">${RESOURCE_INFO[o.res].icon}</div>
+            <div class="card-body">
+              <div class="card-title">${o.qty}x ${RESOURCE_INFO[o.res].name}</div>
+              <div class="card-meta">Recompensa: ${fmt(o.reward)} 🪙</div>
+            </div>
+            <button class="card-btn deliver" data-order-id="${o.id}" ${can?'':'disabled'}>Entregar</button>
+          </div>`;
+      }).join('') : `<div class="empty-hint">Nenhuma encomenda no momento. Volte em breve!</div>`;
+    }
+
+    document.getElementById('sidebar').innerHTML = `
+      <div class="tabs">
+        <div class="tab ${state.activeTab==='build'?'active':''}" data-tab="build">Construir</div>
+        <div class="tab ${state.activeTab==='sell'?'active':''}" data-tab="sell">Vender</div>
+        <div class="tab ${state.activeTab==='orders'?'active':''}" data-tab="orders">Encomendas ${state.orders.length?`(${state.orders.length})`:''}</div>
+      </div>
+      <div class="sidebar-body">${body}</div>
+    `;
+  }
+
+  function renderGrid(){
+    const slot = document.getElementById('placing-banner-slot');
+    slot.innerHTML = state.selectedBuild ? `
+      <div class="placing-banner">
+        <span>${PLACEABLES[state.selectedBuild].icon} Clique num terreno vazio para construir ${PLACEABLES[state.selectedBuild].name}</span>
+        <button data-action="cancel-build">Cancelar</button>
+      </div>` : '';
+
+    document.getElementById('grid').innerHTML = state.grid.map((tile, i) => {
+      if(!tile.key){
+        const placeable = !!state.selectedBuild;
+        return `<div class="tile empty ${placeable?'placeable':''}" data-tile-index="${i}"></div>`;
+      }
+      const def = PLACEABLES[tile.key];
+      const pct = Math.round(tile.progress*100);
+      const showProgress = tile.stage === 'growing' || tile.stage === 'processing';
+      return `
+        <div class="tile occupied ${tile.stage}" data-tile-index="${i}" title="${def.name}">
+          ${tile.stage === 'ready' ? '<span class="ready-mark">✅</span>' : ''}
+          <span>${def.icon}</span>
+          ${showProgress ? `<div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  function renderAll(){ renderHeader(); renderSidebar(); renderGrid(); }
+
+  /* ============ SALVAR / CARREGAR ============ */
+  function saveGame(){
+    const blob = new Blob([JSON.stringify(state)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'vale-dourado-save.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Jogo salvo em arquivo!');
+  }
+  function loadGame(file){
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const loaded = JSON.parse(e.target.result);
+        if(!loaded.grid || !loaded.resources) throw new Error('formato inválido');
+        state = Object.assign(state, loaded);
+        state.selectedBuild = null;
+        renderAll();
+        toast('Progresso carregado!');
+      }catch(err){
+        toast('Arquivo de save inválido.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ============ EVENTOS (delegação) ============ */
+  document.addEventListener('click', e => {
+    const buildBtn = e.target.closest('[data-build-key]');
+    if(buildBtn){ selectBuild(buildBtn.dataset.buildKey); return; }
+
+    const tileEl = e.target.closest('[data-tile-index]');
+    if(tileEl){ clickTile(Number(tileEl.dataset.tileIndex)); return; }
+
+    const sellBtn = e.target.closest('[data-sell-res]');
+    if(sellBtn){ sellResource(sellBtn.dataset.sellRes); return; }
+
+    const orderBtn = e.target.closest('[data-order-id]');
+    if(orderBtn){ deliverOrder(Number(orderBtn.dataset.orderId)); return; }
+
+    const tabEl = e.target.closest('[data-tab]');
+    if(tabEl){ setTab(tabEl.dataset.tab); return; }
+
+    const actionEl = e.target.closest('[data-action]');
+    if(actionEl){
+      const action = actionEl.dataset.action;
+      if(action === 'save') saveGame();
+      if(action === 'load') document.getElementById('load-input').click();
+      if(action === 'cancel-build'){ state.selectedBuild = null; renderAll(); }
+      return;
+    }
+  });
+
+  document.getElementById('load-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(file) loadGame(file);
+    e.target.value = '';
+  });
+
+  /* ============ START ============ */
+  renderAll();
+  setInterval(tick, 200);
+})();
+</script>
+</body>
+</html>
