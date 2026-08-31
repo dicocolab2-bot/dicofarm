@@ -36,6 +36,7 @@
     min-height:100vh;
     display:flex;
     flex-direction:column;
+    user-select:none;
   }
   h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
 
@@ -68,7 +69,7 @@
     width:130px; height:8px; background:#00000040; border-radius:99px; overflow:hidden;
   }
   .xp-fill{height:100%; background:var(--gold); transition:width .3s ease;}
-  .header-right{display:flex; align-items:center; gap:10px;}
+  .header-right{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
   .coin-pill{
     display:flex; align-items:center; gap:8px;
     background:var(--gold);
@@ -93,6 +94,8 @@
     display:flex; align-items:center; gap:6px;
   }
   .icon-btn:hover{background:#fff2cf;}
+  .icon-btn.music-on{background:var(--meadow); color:#fff;}
+  .icon-btn.music-off{background:var(--berry); color:#fff;}
 
   /* ---------- LAYOUT ---------- */
   .main{
@@ -202,6 +205,7 @@
     cursor:default;
     user-select:none;
     overflow:hidden;
+    transition:transform 0.1s ease;
   }
   .tile.empty{
     background:repeating-linear-gradient(45deg, var(--tile), var(--tile) 8px, var(--tile-dark) 8px, var(--tile-dark) 9px);
@@ -211,7 +215,13 @@
     box-shadow:inset 0 0 0 3px var(--gold);
   }
   .tile.empty.placeable:hover{filter:brightness(1.12);}
-  .tile.occupied.ready{cursor:pointer;}
+  .tile.occupied.ready{
+    cursor:context-menu;
+  }
+  .tile.occupied.ready:hover{
+    transform:scale(1.05);
+    box-shadow:0 0 15px rgba(217,164,65,0.5);
+  }
   .tile.occupied.growing, .tile.occupied.processing{cursor:default;}
   
   .tile .progress-track{
@@ -226,6 +236,17 @@
   .tile .ready-mark{
     position:absolute; top:2px; left:4px; font-size:.85rem;
     animation: ready-star 0.8s ease-in-out infinite;
+  }
+  .tile .collect-hint{
+    position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+    font-size:.5rem; background:rgba(0,0,0,0.6); color:#fff;
+    padding:1px 6px; border-radius:4px;
+    opacity:0;
+    transition:opacity 0.3s ease;
+    white-space:nowrap;
+  }
+  .tile.occupied.ready:hover .collect-hint{
+    opacity:1;
   }
 
   /* ===== ANIMAÇÕES DOS TILES ===== */
@@ -365,6 +386,192 @@
 (function(){
   "use strict";
 
+  /* ============ SISTEMA DE MÚSICA ============ */
+  let musicContext = null;
+  let musicNodes = [];
+  let isMusicPlaying = false;
+  let musicGainNode = null;
+  let musicInterval = null;
+
+  function initAudio() {
+    if (!musicContext) {
+      musicContext = new (window.AudioContext || window.webkitAudioContext)();
+      musicGainNode = musicContext.createGain();
+      musicGainNode.gain.value = 0.3;
+      musicGainNode.connect(musicContext.destination);
+    }
+    if (musicContext.state === 'suspended') {
+      musicContext.resume();
+    }
+  }
+
+  const NOTES = {
+    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, 
+    G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25,
+    D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99
+  };
+
+  const FARM_MELODY = [
+    { note: 'C4', duration: 0.3 },
+    { note: 'E4', duration: 0.3 },
+    { note: 'G4', duration: 0.3 },
+    { note: 'C5', duration: 0.4 },
+    { note: 'B4', duration: 0.3 },
+    { note: 'G4', duration: 0.3 },
+    { note: 'E4', duration: 0.3 },
+    { note: 'D4', duration: 0.4 },
+    { note: 'C4', duration: 0.3 },
+    { note: 'E4', duration: 0.3 },
+    { note: 'G4', duration: 0.3 },
+    { note: 'C5', duration: 0.4 },
+    { note: 'D5', duration: 0.3 },
+    { note: 'C5', duration: 0.3 },
+    { note: 'G4', duration: 0.3 },
+    { note: 'E4', duration: 0.4 },
+    { note: 'F4', duration: 0.3 },
+    { note: 'A4', duration: 0.3 },
+    { note: 'C5', duration: 0.3 },
+    { note: 'F5', duration: 0.4 },
+    { note: 'E5', duration: 0.3 },
+    { note: 'C5', duration: 0.3 },
+    { note: 'A4', duration: 0.3 },
+    { note: 'G4', duration: 0.4 },
+    { note: 'G4', duration: 0.3 },
+    { note: 'B4', duration: 0.3 },
+    { note: 'D5', duration: 0.3 },
+    { note: 'G5', duration: 0.4 },
+    { note: 'F5', duration: 0.3 },
+    { note: 'D5', duration: 0.3 },
+    { note: 'B4', duration: 0.3 },
+    { note: 'C5', duration: 0.6 },
+  ];
+
+  function playNote(frequency, duration, time) {
+    if (!musicContext) return;
+    try {
+      const oscillator = musicContext.createOscillator();
+      const gainNode = musicContext.createGain();
+      
+      oscillator.type = 'triangle';
+      oscillator.frequency.value = frequency;
+      
+      gainNode.gain.setValueAtTime(0.3, time);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(musicGainNode);
+      
+      oscillator.start(time);
+      oscillator.stop(time + duration);
+      
+      if (Math.random() > 0.7) {
+        const delayGain = musicContext.createGain();
+        delayGain.gain.value = 0.05;
+        const delay = musicContext.createDelay(0.5);
+        delay.delayTime.value = 0.1;
+        gainNode.connect(delay);
+        delay.connect(delayGain);
+        delayGain.connect(musicGainNode);
+      }
+      
+      musicNodes.push(oscillator);
+      setTimeout(() => {
+        const idx = musicNodes.indexOf(oscillator);
+        if (idx > -1) musicNodes.splice(idx, 1);
+      }, (duration + 0.1) * 1000);
+      
+    } catch(e) {}
+  }
+
+  function playFarmMusic() {
+    if (!isMusicPlaying) return;
+    if (!musicContext) return;
+    
+    let time = musicContext.currentTime + 0.05;
+    
+    FARM_MELODY.forEach((note, index) => {
+      const freq = NOTES[note.note];
+      if (freq) {
+        playNote(freq, note.duration, time);
+        time += note.duration + 0.05;
+        
+        if (index % 4 === 0 && Math.random() > 0.6) {
+          const harmonyNote = getHarmonyNote(note.note);
+          if (harmonyNote) {
+            const harmonyFreq = NOTES[harmonyNote];
+            playNote(harmonyFreq, note.duration * 0.7, time - note.duration - 0.02);
+          }
+        }
+      }
+    });
+    
+    const totalDuration = FARM_MELODY.reduce((sum, n) => sum + n.duration + 0.05, 0);
+    musicInterval = setTimeout(() => {
+      if (isMusicPlaying) playFarmMusic();
+    }, (totalDuration + 0.5) * 1000);
+  }
+
+  function getHarmonyNote(note) {
+    const harmonyMap = {
+      'C4': 'E4', 'E4': 'G4', 'G4': 'C5', 'C5': 'G4',
+      'D4': 'F4', 'F4': 'A4', 'A4': 'C5', 'D5': 'F5',
+      'G4': 'B4', 'B4': 'D5', 'F5': 'D5', 'E5': 'C5'
+    };
+    return harmonyMap[note] || null;
+  }
+
+  function toggleMusic() {
+    if (isMusicPlaying) {
+      stopMusic();
+    } else {
+      startMusic();
+    }
+    updateMusicButton();
+  }
+
+  function startMusic() {
+    try {
+      initAudio();
+      isMusicPlaying = true;
+      if (musicInterval) {
+        clearTimeout(musicInterval);
+        musicInterval = null;
+      }
+      setTimeout(() => {
+        if (isMusicPlaying) playFarmMusic();
+      }, 200);
+      toast('🎵 Música ligada!');
+    } catch(e) {
+      toast('Erro ao iniciar música. Clique novamente.');
+    }
+  }
+
+  function stopMusic() {
+    isMusicPlaying = false;
+    if (musicInterval) {
+      clearTimeout(musicInterval);
+      musicInterval = null;
+    }
+    musicNodes.forEach(node => {
+      try { node.stop(); } catch(e) {}
+    });
+    musicNodes = [];
+    toast('🔇 Música desligada');
+  }
+
+  function updateMusicButton() {
+    const btn = document.getElementById('music-toggle');
+    if (btn) {
+      if (isMusicPlaying) {
+        btn.className = 'icon-btn music-on';
+        btn.innerHTML = '🔊 Música';
+      } else {
+        btn.className = 'icon-btn music-off';
+        btn.innerHTML = '🔇 Música';
+      }
+    }
+  }
+
   /* ============ DADOS DO JOGO ============ */
   const GRID_SIZE = 40;
 
@@ -376,12 +583,12 @@
   };
 
   const PLACEABLES = {
-    wheat_field:{ cat:'crop', name:'Campo de Trigo', icon:'🌾', cost:10, growTime:6, yieldRes:'wheat', yieldAmt:3, levelReq:1 },
-    corn_field:{ cat:'crop', name:'Campo de Milho', icon:'🌽', cost:25, growTime:9, yieldRes:'corn', yieldAmt:3, levelReq:2 },
-    carrot_field:{ cat:'crop', name:'Campo de Cenoura', icon:'🥕', cost:45, growTime:13, yieldRes:'carrot', yieldAmt:3, levelReq:3 },
-    mill:{ cat:'factory', name:'Moinho', icon:'⚙️', cost:60, time:5, input:{wheat:3}, outputRes:'flour', outputAmt:2, levelReq:1 },
-    coop:{ cat:'factory', name:'Galinheiro', icon:'🐔', cost:90, time:10, input:{corn:3}, outputRes:'egg', outputAmt:3, levelReq:2 },
-    bakery:{ cat:'factory', name:'Padaria', icon:'🍞', cost:150, time:9, input:{flour:2, egg:1}, outputRes:'bread', outputAmt:2, levelReq:3 },
+    wheat_field:{ cat:'crop', name:'Campo de Trigo', icon:'🌾', cost:10, growTime:60, yieldRes:'wheat', yieldAmt:3, levelReq:1 },
+    corn_field:{ cat:'crop', name:'Campo de Milho', icon:'🌽', cost:25, growTime:90, yieldRes:'corn', yieldAmt:3, levelReq:2 },
+    carrot_field:{ cat:'crop', name:'Campo de Cenoura', icon:'🥕', cost:45, growTime:130, yieldRes:'carrot', yieldAmt:3, levelReq:3 },
+    mill:{ cat:'factory', name:'Moinho', icon:'⚙️', cost:60, time:50, input:{wheat:3}, outputRes:'flour', outputAmt:2, levelReq:1 },
+    coop:{ cat:'factory', name:'Galinheiro', icon:'🐔', cost:90, time:100, input:{corn:3}, outputRes:'egg', outputAmt:3, levelReq:2 },
+    bakery:{ cat:'factory', name:'Padaria', icon:'🍞', cost:150, time:90, input:{flour:2, egg:1}, outputRes:'bread', outputAmt:2, levelReq:3 },
   };
 
   const RESOURCE_MIN_LEVEL = { wheat:1, flour:1, corn:2, egg:2, carrot:3, bread:3 };
@@ -503,24 +710,28 @@
     renderAll();
   }
 
-  function clickTile(index){
+  function handleTileClick(index, isRightClick = false) {
     const tile = state.grid[index];
-    const def = tile.key ? PLACEABLES[tile.key] : null;
-
-    if(!tile.key){
-      if(!state.selectedBuild) return;
-      const bdef = PLACEABLES[state.selectedBuild];
-      if(state.coins < bdef.cost) { toast('Moedas insuficientes.'); return; }
-      state.coins -= bdef.cost;
-      tile.key = state.selectedBuild;
-      tile.progress = 0;
-      tile.stage = bdef.cat === 'crop' ? 'growing' : 'idle';
-      toast(`${bdef.icon} ${bdef.name} construído!`);
-      renderAll();
+    
+    if(!tile.key) {
+      // Construir (clique esquerdo)
+      if(!isRightClick && state.selectedBuild) {
+        const bdef = PLACEABLES[state.selectedBuild];
+        if(state.coins < bdef.cost) { toast('Moedas insuficientes.'); return; }
+        state.coins -= bdef.cost;
+        tile.key = state.selectedBuild;
+        tile.progress = 0;
+        tile.stage = bdef.cat === 'crop' ? 'growing' : 'idle';
+        toast(`${bdef.icon} ${bdef.name} construído!`);
+        renderAll();
+      }
       return;
     }
 
-    if(tile.stage === 'ready'){
+    const def = PLACEABLES[tile.key];
+
+    // Coletar (clique direito)
+    if(isRightClick && tile.stage === 'ready') {
       const tileElement = document.querySelector(`[data-tile-index="${index}"]`);
       if(tileElement) {
         tileElement.querySelector('span')?.classList.add('anim-harvest');
@@ -542,6 +753,12 @@
         tile.progress = 0;
       }
       renderAll();
+      return;
+    }
+
+    // Clique esquerdo em tile ocupado - mostra informação
+    if(!isRightClick && tile.stage === 'ready') {
+      toast(`${def.icon} ${def.name} pronto! Clique com botão direito para coletar.`);
     }
   }
 
@@ -584,7 +801,6 @@
     let content = def.icon;
     let animClass = '';
     
-    // Animações para plantações em crescimento
     if (tile.stage === 'growing') {
       if (progress < 0.33) {
         content = '🌱';
@@ -598,7 +814,6 @@
       }
     }
     
-    // Animações para fábricas em processamento
     if (tile.stage === 'processing') {
       if (tile.key === 'mill') {
         content = '⚙️';
@@ -622,7 +837,6 @@
       }
     }
     
-    // Pronto para colher
     if (tile.stage === 'ready') {
       animClass = 'anim-ready';
     }
@@ -652,8 +866,10 @@
         <div class="coin-pill">🪙 ${fmt(state.coins)}</div>
         <button class="icon-btn" data-action="save">💾 Salvar</button>
         <button class="icon-btn" data-action="load">📂 Carregar</button>
+        <button id="music-toggle" class="icon-btn music-off" data-action="toggle-music">🔇 Música</button>
       </div>
     `;
+    updateMusicButton();
   }
 
   function renderSidebar(){
@@ -664,9 +880,10 @@
       body = Object.entries(PLACEABLES).map(([key,def]) => {
         const locked = lvl < def.levelReq;
         const selected = state.selectedBuild === key;
+        const timeDisplay = def.cat === 'crop' ? `${def.growTime}s` : `${def.time}s`;
         const costLine = def.cat === 'crop'
-          ? `Colheita: +${def.yieldAmt} ${RESOURCE_INFO[def.yieldRes].icon} a cada ${def.growTime}s`
-          : `Usa ${Object.entries(def.input).map(([r,q])=>`${q} ${RESOURCE_INFO[r].icon}`).join(' + ')} → +${def.outputAmt} ${RESOURCE_INFO[def.outputRes].icon}`;
+          ? `Colheita: +${def.yieldAmt} ${RESOURCE_INFO[def.yieldRes].icon} a cada ${timeDisplay}`
+          : `Usa ${Object.entries(def.input).map(([r,q])=>`${q} ${RESOURCE_INFO[r].icon}`).join(' + ')} → +${def.outputAmt} ${RESOURCE_INFO[def.outputRes].icon} (${timeDisplay})`;
         return `
           <div class="build-card ${selected?'selected':''} ${locked?'locked':''}">
             <div class="card-icon">${def.icon}</div>
@@ -728,7 +945,7 @@
     const slot = document.getElementById('placing-banner-slot');
     slot.innerHTML = state.selectedBuild ? `
       <div class="placing-banner">
-        <span>${PLACEABLES[state.selectedBuild].icon} Clique num terreno vazio para construir ${PLACEABLES[state.selectedBuild].name}</span>
+        <span>${PLACEABLES[state.selectedBuild].icon} Clique com botão esquerdo para construir ${PLACEABLES[state.selectedBuild].name}</span>
         <button data-action="cancel-build">Cancelar</button>
       </div>` : '';
 
@@ -747,6 +964,7 @@
           ${tile.stage === 'ready' ? '<span class="ready-mark">⭐</span>' : ''}
           <span class="${animClass}">${content}</span>
           ${showProgress ? `<div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>` : ''}
+          ${tile.stage === 'ready' ? '<div class="collect-hint">🖱️ Clique direito para colher</div>' : ''}
         </div>`;
     }).join('');
   }
@@ -755,27 +973,71 @@
 
   /* ============ SALVAR / CARREGAR ============ */
   function saveGame(){
-    const blob = new Blob([JSON.stringify(state)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'vale-dourado-save.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('Jogo salvo em arquivo!');
+    try {
+      const saveData = JSON.stringify(state);
+      const blob = new Blob([saveData], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; 
+      a.download = `vale-dourado-save-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('💾 Jogo salvo com sucesso!');
+    } catch(e) {
+      toast('❌ Erro ao salvar: ' + e.message);
+      console.error('Save error:', e);
+    }
   }
+
   function loadGame(file){
     const reader = new FileReader();
-    reader.onload = e => {
-      try{
+    reader.onload = function(e) {
+      try {
         const loaded = JSON.parse(e.target.result);
-        if(!loaded.grid || !loaded.resources) throw new Error('formato inválido');
-        state = Object.assign(state, loaded);
+        
+        // Validação completa do save
+        if (!loaded || typeof loaded !== 'object') {
+          throw new Error('Arquivo inválido');
+        }
+        if (!loaded.grid || !Array.isArray(loaded.grid) || loaded.grid.length !== GRID_SIZE) {
+          throw new Error('Grid inválido');
+        }
+        if (!loaded.resources || typeof loaded.resources !== 'object') {
+          throw new Error('Recursos inválidos');
+        }
+        if (typeof loaded.coins !== 'number' || typeof loaded.totalEarned !== 'number') {
+          throw new Error('Dados de moedas inválidos');
+        }
+        
+        // Restaurar estado
+        state.coins = loaded.coins;
+        state.totalEarned = loaded.totalEarned;
+        state.resources = loaded.resources;
+        state.grid = loaded.grid;
+        state.orders = loaded.orders || [];
+        state.nextOrderIn = loaded.nextOrderIn || 8;
         state.selectedBuild = null;
+        state.activeTab = 'build';
+        
+        // Recuperar contador de ordens
+        if (loaded.orders && loaded.orders.length > 0) {
+          const maxId = Math.max(...loaded.orders.map(o => o.id || 0));
+          orderIdCounter = Math.max(maxId + 1, 1);
+        } else {
+          orderIdCounter = 1;
+        }
+        
         renderAll();
-        toast('Progresso carregado!');
-      }catch(err){
-        toast('Arquivo de save inválido.');
+        toast('✅ Progresso carregado com sucesso!');
+      } catch(err) {
+        toast('❌ Erro ao carregar: ' + err.message);
+        console.error('Load error:', err);
       }
+    };
+    reader.onerror = function() {
+      toast('❌ Erro ao ler o arquivo');
     };
     reader.readAsText(file);
   }
@@ -786,7 +1048,11 @@
     if(buildBtn){ selectBuild(buildBtn.dataset.buildKey); return; }
 
     const tileEl = e.target.closest('[data-tile-index]');
-    if(tileEl){ clickTile(Number(tileEl.dataset.tileIndex)); return; }
+    if(tileEl){ 
+      e.preventDefault();
+      handleTileClick(Number(tileEl.dataset.tileIndex), false); 
+      return; 
+    }
 
     const sellBtn = e.target.closest('[data-sell-res]');
     if(sellBtn){ sellResource(sellBtn.dataset.sellRes); return; }
@@ -803,19 +1069,41 @@
       if(action === 'save') saveGame();
       if(action === 'load') document.getElementById('load-input').click();
       if(action === 'cancel-build'){ state.selectedBuild = null; renderAll(); }
+      if(action === 'toggle-music') toggleMusic();
       return;
+    }
+  });
+
+  // Evento de clique direito nos tiles
+  document.addEventListener('contextmenu', e => {
+    const tileEl = e.target.closest('[data-tile-index]');
+    if(tileEl) {
+      e.preventDefault();
+      handleTileClick(Number(tileEl.dataset.tileIndex), true);
     }
   });
 
   document.getElementById('load-input').addEventListener('change', e => {
     const file = e.target.files[0];
-    if(file) loadGame(file);
+    if(file) {
+      loadGame(file);
+    }
     e.target.value = '';
   });
 
   /* ============ START ============ */
   renderAll();
   setInterval(tick, 200);
+
+  document.addEventListener('click', function initAudioOnClick() {
+    if (!isMusicPlaying) {
+      try {
+        initAudio();
+      } catch(e) {}
+    }
+    document.removeEventListener('click', initAudioOnClick);
+  }, { once: true });
+
 })();
 </script>
 </body>
