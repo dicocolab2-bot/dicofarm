@@ -1,1259 +1,1459 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vale Dourado — jogo de fazenda e vilarejo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg: #22301c;
-    --bg-2: #2c3d23;
-    --panel: #f5ecd0;
-    --panel-dark: #e9dcb4;
-    --soil: #3a2a1c;
-    --ink: #2b2117;
-    --ink-soft: #6b5a44;
-    --meadow: #5c8c3e;
-    --meadow-dark: #446b2c;
-    --gold: #d9a441;
-    --gold-dark: #b9822a;
-    --sky: #5b8fa8;
-    --berry: #b24a3e;
-    --tile: #6fae5a;
-    --tile-dark: #59944a;
-    --radius: 14px;
-    --shadow: 0 3px 0 rgba(0,0,0,.25);
-    --danger: #c0392b;
-    --danger-dark: #a93226;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;height:100%;}
-  body{
-    font-family:'Inter',sans-serif;
-    background:
-      radial-gradient(ellipse at top, var(--bg-2), var(--bg) 70%);
-    color:var(--ink);
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    user-select:none;
-  }
-  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
-
-  /* ---------- HEADER ---------- */
-  #header{
-    background:var(--soil);
-    color:var(--panel);
-    padding:14px 22px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:16px;
-    flex-wrap:wrap;
-    border-bottom:4px solid var(--gold-dark);
-  }
-  #header .title-block{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
-  #header h1{font-size:1.6rem; margin:0; font-weight:800; letter-spacing:.5px;}
-  #header .sub{font-size:.8rem; color:#cbb98d; margin-top:2px;}
-  .level-badge{
-    background:var(--meadow);
-    color:#f5ecd0;
-    font-family:'Baloo 2',sans-serif;
-    font-weight:700;
-    padding:5px 12px;
-    border-radius:999px;
-    font-size:.85rem;
-    white-space:nowrap;
-  }
-  .xp-track{
-    width:130px; height:8px; background:#00000040; border-radius:99px; overflow:hidden;
-  }
-  .xp-fill{height:100%; background:var(--gold); transition:width .3s ease;}
-  .header-right{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-  .coin-pill{
-    display:flex; align-items:center; gap:8px;
-    background:var(--gold);
-    color:#3a2408;
-    font-family:'Baloo 2',sans-serif;
-    font-weight:700;
-    padding:7px 16px 7px 10px;
-    border-radius:999px;
-    font-size:1.05rem;
-    box-shadow:var(--shadow);
-  }
-  .icon-btn{
-    background:var(--panel-dark);
-    border:none;
-    color:var(--ink);
-    font-family:'Inter',sans-serif;
-    font-weight:600;
-    font-size:.8rem;
-    padding:8px 12px;
-    border-radius:10px;
-    cursor:pointer;
-    display:flex; align-items:center; gap:6px;
-  }
-  .icon-btn:hover{background:#fff2cf;}
-  .icon-btn.music-on{background:var(--meadow); color:#fff;}
-  .icon-btn.music-off{background:var(--berry); color:#fff;}
-  .icon-btn.danger{background:var(--danger); color:#fff;}
-  .icon-btn.danger:hover{background:var(--danger-dark);}
-
-  /* ---------- LAYOUT ---------- */
-  .main{
-    flex:1;
-    display:flex;
-    gap:18px;
-    padding:18px;
-    max-width:1280px;
-    width:100%;
-    margin:0 auto;
-    align-items:flex-start;
-  }
-  #sidebar{
-    background:var(--panel);
-    border-radius:var(--radius);
-    width:320px;
-    flex-shrink:0;
-    box-shadow:var(--shadow);
-    overflow:hidden;
-  }
-  .tabs{
-    display:flex;
-    background:var(--panel-dark);
-    flex-wrap:wrap;
-  }
-  .tab{
-    flex:1;
-    text-align:center;
-    padding:11px 4px;
-    font-family:'Baloo 2',sans-serif;
-    font-weight:700;
-    font-size:.8rem;
-    cursor:pointer;
-    color:var(--ink-soft);
-    border-bottom:3px solid transparent;
-    min-width:60px;
-  }
-  .tab.active{
-    color:var(--ink);
-    border-bottom:3px solid var(--meadow);
-    background:var(--panel);
-  }
-  .sidebar-body{padding:12px; max-height:640px; overflow-y:auto;}
-
-  .build-card, .sell-card, .order-card, .slot-card{
-    background:#fffaf0;
-    border:1px solid #e4d5a8;
-    border-radius:10px;
-    padding:10px;
-    margin-bottom:10px;
-    display:flex;
-    gap:10px;
-    align-items:center;
-  }
-  .build-card.selected{outline:2px solid var(--meadow); background:#f0ffe4;}
-  .build-card.locked{opacity:.55;}
-  .build-card .card-actions{display:flex; gap:5px; flex-wrap:wrap;}
-  .card-icon{font-size:1.6rem; width:36px; text-align:center;}
-  .card-body{flex:1; min-width:0;}
-  .card-title{font-weight:700; font-size:.88rem;}
-  .card-meta{font-size:.72rem; color:var(--ink-soft); margin-top:2px; line-height:1.4;}
-  .card-btn{
-    border:none; border-radius:8px; padding:7px 10px; font-weight:700;
-    font-size:.78rem; cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap;
-  }
-  .card-btn.build{background:var(--meadow); color:#fff;}
-  .card-btn.build:hover{background:var(--meadow-dark);}
-  .card-btn.build:disabled{background:#b9c2ae; cursor:not-allowed;}
-  .card-btn.sell{background:var(--sky); color:#fff;}
-  .card-btn.sell:hover{background:#456f83;}
-  .card-btn.deliver{background:var(--berry); color:#fff;}
-  .card-btn.deliver:disabled{background:#c9a9a4; cursor:not-allowed;}
-  .card-btn.danger{background:var(--danger); color:#fff;}
-  .card-btn.danger:hover{background:var(--danger-dark);}
-  .card-btn.slot{background:var(--gold); color:#3a2408;}
-  .card-btn.slot:hover{background:var(--gold-dark);}
-  .lock-tag{font-size:.68rem; color:var(--berry); font-weight:700; margin-top:3px;}
-  .empty-hint{font-size:.82rem; color:var(--ink-soft); text-align:center; padding:20px 10px;}
-
-  /* ---------- GRID ---------- */
-  #grid-wrap{
-    flex:1;
-    background:linear-gradient(160deg, #7fbf63, #6aa552 55%, #588e42);
-    border-radius:var(--radius);
-    padding:20px;
-    box-shadow:var(--shadow);
-    min-height:520px;
-    position:relative;
-  }
-  .placing-banner{
-    background:var(--soil); color:var(--panel);
-    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:.85rem;
-    padding:8px 14px; border-radius:10px; margin-bottom:14px;
-    display:flex; justify-content:space-between; align-items:center;
-    flex-wrap:wrap;
-    gap:8px;
-  }
-  .placing-banner button{
-    background:var(--berry); color:#fff; border:none; border-radius:8px;
-    padding:5px 10px; font-weight:700; cursor:pointer; font-size:.75rem;
-  }
-  .placing-banner .mode-badge{
-    background:rgba(255,255,255,0.2);
-    padding:4px 10px;
-    border-radius:6px;
-    font-size:.75rem;
-  }
-  #grid{
-    display:grid;
-    grid-template-columns:repeat(8, 1fr);
-    gap:9px;
-  }
-  .tile{
-    aspect-ratio:1/1;
-    background:var(--tile);
-    border-radius:10px;
-    border:2px solid var(--tile-dark);
-    position:relative;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:1.6rem;
-    cursor:default;
-    user-select:none;
-    overflow:hidden;
-    transition:transform 0.1s ease, box-shadow 0.2s ease;
-  }
-  .tile.empty{
-    background:repeating-linear-gradient(45deg, var(--tile), var(--tile) 8px, var(--tile-dark) 8px, var(--tile-dark) 9px);
-  }
-  .tile.empty.placeable{
-    cursor:pointer;
-    box-shadow:inset 0 0 0 3px var(--gold);
-  }
-  .tile.empty.placeable:hover{filter:brightness(1.12);}
-  .tile.empty.destroy-mode{
-    cursor:not-allowed;
-    box-shadow:inset 0 0 0 3px var(--danger);
-    opacity:0.6;
-  }
-  .tile.occupied.ready{
-    cursor:context-menu;
-  }
-  .tile.occupied.ready:hover{
-    transform:scale(1.05);
-    box-shadow:0 0 15px rgba(217,164,65,0.5);
-  }
-  .tile.occupied.growing, .tile.occupied.processing{cursor:default;}
-  .tile.occupied.destroy-mode{
-    cursor:pointer;
-    border-color:var(--danger);
-    box-shadow:inset 0 0 0 2px var(--danger);
-    opacity:0.7;
-  }
-  .tile.occupied.destroy-mode:hover{
-    transform:scale(1.05);
-    border-color:var(--danger-dark);
-    background:rgba(192,57,43,0.2);
-  }
-  
-  .tile .progress-track{
-    position:absolute; left:6%; right:6%; bottom:6px; height:5px;
-    background:rgba(0,0,0,.25); border-radius:99px; overflow:hidden;
-  }
-  .tile .progress-fill{height:100%; background:var(--gold); transition:width .2s ease;}
-  .tile .badge{
-    position:absolute; top:3px; right:4px; font-size:.62rem; font-weight:700;
-    background:rgba(0,0,0,.35); color:#fff; padding:1px 5px; border-radius:6px;
-  }
-  .tile .ready-mark{
-    position:absolute; top:2px; left:4px; font-size:.85rem;
-    animation: ready-star 0.8s ease-in-out infinite;
-  }
-  .tile .collect-hint{
-    position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
-    font-size:.5rem; background:rgba(0,0,0,0.6); color:#fff;
-    padding:1px 6px; border-radius:4px;
-    opacity:0;
-    transition:opacity 0.3s ease;
-    white-space:nowrap;
-  }
-  .tile.occupied.ready:hover .collect-hint{
-    opacity:1;
-  }
-
-  /* ===== ANIMAÇÕES DOS TILES ===== */
-  .tile .anim-sprout {
-    animation: sprout 0.8s ease-in-out infinite alternate;
-    display: inline-block;
-  }
-  .tile .anim-grow {
-    animation: grow 1.2s ease-in-out infinite;
-    display: inline-block;
-  }
-  .tile .anim-ready-grow {
-    animation: ready-pulse 0.8s ease-in-out infinite;
-    display: inline-block;
-  }
-  .tile .anim-mill {
-    animation: mill-spin 2s linear infinite;
-    display: inline-block;
-  }
-  .tile .anim-chicken {
-    animation: chicken-peck 0.6s ease-in-out infinite;
-    display: inline-block;
-  }
-  .tile .anim-egg {
-    animation: egg-bob 0.8s ease-in-out infinite;
-    display: inline-block;
-  }
-  .tile .anim-bake {
-    animation: bake-rise 0.7s ease-in-out infinite alternate;
-    display: inline-block;
-  }
-  .tile .anim-winery {
-    animation: winery-ferment 1.2s ease-in-out infinite;
-    display: inline-block;
-  }
-  .tile .anim-cachaça {
-    animation: cachaça-distill 1.5s ease-in-out infinite;
-    display: inline-block;
-  }
-  .tile .anim-candy {
-    animation: candy-cook 0.8s ease-in-out infinite alternate;
-    display: inline-block;
-  }
-  .tile .anim-ready {
-    animation: ready-pulse 0.6s ease-in-out infinite;
-    display: inline-block;
-  }
-  .tile .anim-harvest {
-    animation: harvest-pop 0.5s ease-out forwards;
-    display: inline-block;
-  }
-
-  @keyframes sprout {
-    0% { transform: scale(0.6) translateY(8px); opacity: 0.6; }
-    100% { transform: scale(1) translateY(0); opacity: 1; }
-  }
-  @keyframes grow {
-    0% { transform: scale(0.9) rotate(-3deg); }
-    50% { transform: scale(1.1) rotate(3deg); }
-    100% { transform: scale(0.9) rotate(-3deg); }
-  }
-  @keyframes ready-pulse {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(1.15) rotate(4deg); }
-  }
-  @keyframes mill-spin {
-    from { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(180deg) scale(1.1); }
-    to { transform: rotate(360deg) scale(1); }
-  }
-  @keyframes chicken-peck {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    25% { transform: translateY(-5px) rotate(-6deg); }
-    75% { transform: translateY(-2px) rotate(6deg); }
-  }
-  @keyframes egg-bob {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-3px) scale(1.05); }
-  }
-  @keyframes bake-rise {
-    0% { transform: scale(1) translateY(0); }
-    100% { transform: scale(1.08) translateY(-3px); }
-  }
-  @keyframes winery-ferment {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(1.05) rotate(2deg) translateY(-2px); }
-  }
-  @keyframes cachaça-distill {
-    0%, 100% { transform: scale(1) rotate(-2deg); }
-    50% { transform: scale(1.08) rotate(2deg) translateY(-3px); }
-  }
-  @keyframes candy-cook {
-    0% { transform: scale(1) rotate(-3deg); }
-    100% { transform: scale(1.1) rotate(3deg) translateY(-2px); }
-  }
-  @keyframes ready-star {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(1.2) rotate(20deg); }
-  }
-  @keyframes harvest-pop {
-    0% { transform: scale(1.5); opacity: 1; }
-    50% { transform: scale(1.8); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-
-  /* ===== PARTÍCULAS DE COLHEITA ===== */
-  .harvest-particle {
-    position: fixed;
-    pointer-events: none;
-    font-size: 24px;
-    z-index: 100;
-    animation: particle-fly 0.8s ease-out forwards;
-  }
-  @keyframes particle-fly {
-    0% { opacity: 1; transform: translate(0, 0) scale(1); }
-    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3); }
-  }
-
-  /* ===== TOASTS ===== */
-  #toast-container{
-    position:fixed; top:16px; right:16px; display:flex; flex-direction:column; gap:8px; z-index:50;
-  }
-  .toast{
-    background:var(--soil); color:var(--panel); padding:10px 16px; border-radius:10px;
-    font-weight:600; font-size:.85rem; box-shadow:0 4px 10px rgba(0,0,0,.3);
-    animation:toast-in .25s ease, toast-out .4s ease 2.6s forwards;
-  }
-  @keyframes toast-in{from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:translateY(0);}}
-  @keyframes toast-out{to{opacity:0; transform:translateY(-8px);}}
-
-  .footer-note{
-    text-align:center; color:#cbb98d; font-size:.72rem; padding:10px 0 18px;
-  }
-
-  @media(max-width:820px){
-    .main{flex-direction:column;}
-    #sidebar{width:100%;}
-    #grid{grid-template-columns:repeat(6,1fr);}
-  }
-  @media(max-width:480px){
-    #grid{grid-template-columns:repeat(4,1fr);}
-    #header h1{font-size:1.25rem;}
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vale Dourado 3D</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #1a1a2e; font-family: 'Segoe UI', sans-serif; }
+        
+        /* UI Overlay */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #ui-overlay > * { pointer-events: auto; }
+        
+        /* Header */
+        #header {
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #f5c542;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        #header .title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f5c542;
+            text-shadow: 0 2px 10px rgba(245,197,66,0.3);
+        }
+        
+        #header .title span { color: #fff; }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .resource-display {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+            background: rgba(255,255,255,0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+        
+        .resource-display .icon { font-size: 1.2rem; }
+        .resource-display .value { font-weight: bold; }
+        
+        .coin-display {
+            background: #f5c542;
+            color: #1a1a2e;
+            padding: 5px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            pointer-events: auto;
+        }
+        
+        .btn:hover { transform: scale(1.05); }
+        .btn:active { transform: scale(0.95); }
+        
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover { background: #45a049; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-danger:hover { background: #da190b; }
+        .btn-info { background: #2196F3; color: white; }
+        .btn-info:hover { background: #0b7dda; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-warning:hover { background: #e68a00; }
+        .btn-gold { background: #f5c542; color: #1a1a2e; }
+        .btn-gold:hover { background: #e6b332; }
+        
+        /* Sidebar */
+        #sidebar {
+            position: absolute;
+            right: 20px;
+            top: 80px;
+            width: 280px;
+            max-height: calc(100vh - 120px);
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        #sidebar::-webkit-scrollbar { width: 6px; }
+        #sidebar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        #sidebar::-webkit-scrollbar-thumb { background: #f5c542; border-radius: 10px; }
+        
+        #sidebar.hidden {
+            transform: translateX(320px);
+        }
+        
+        .sidebar-title {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #f5c542;
+            padding-bottom: 8px;
+        }
+        
+        .sidebar-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        
+        .sidebar-item:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #f5c542;
+        }
+        
+        .sidebar-item.selected {
+            border-color: #f5c542;
+            background: rgba(245,197,66,0.15);
+        }
+        
+        .sidebar-item .info { color: #ccc; font-size: 0.8rem; }
+        .sidebar-item .name { color: #fff; font-weight: 600; }
+        .sidebar-item .cost { color: #f5c542; font-weight: bold; }
+        .sidebar-item .locked { color: #f44336; font-size: 0.7rem; }
+        
+        .sidebar-item .icon { font-size: 1.5rem; margin-right: 8px; }
+        
+        /* Toast */
+        #toast-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+        
+        .toast {
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            animation: toastIn 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: auto;
+        }
+        
+        .toast.success { border-color: #4CAF50; }
+        .toast.error { border-color: #f44336; }
+        .toast.info { border-color: #2196F3; }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+        
+        /* Controls hint */
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            #sidebar {
+                right: 10px;
+                width: 240px;
+                top: 70px;
+                padding: 10px;
+                font-size: 0.8rem;
+            }
+            #header .title { font-size: 1rem; }
+            .resource-display { font-size: 0.7rem; padding: 3px 8px; }
+            .btn { padding: 5px 10px; font-size: 0.7rem; }
+        }
+    </style>
 </head>
 <body>
 
-<header id="header"></header>
-<div class="main">
-  <aside id="sidebar"></aside>
-  <section id="grid-wrap">
-    <div id="placing-banner-slot"></div>
-    <div id="grid"></div>
-  </section>
+<!-- UI Overlay -->
+<div id="ui-overlay">
+    <!-- Header -->
+    <div id="header">
+        <div class="title">🏡 Vale <span>Dourado</span></div>
+        <div class="header-right">
+            <div class="resource-display"><span class="icon">🌾</span><span class="value" id="res-wheat">0</span></div>
+            <div class="resource-display"><span class="icon">🌽</span><span class="value" id="res-corn">0</span></div>
+            <div class="resource-display"><span class="icon">🥕</span><span class="value" id="res-carrot">0</span></div>
+            <div class="resource-display"><span class="icon">🧂</span><span class="value" id="res-flour">0</span></div>
+            <div class="resource-display"><span class="icon">🥚</span><span class="value" id="res-egg">0</span></div>
+            <div class="resource-display"><span class="icon">🍞</span><span class="value" id="res-bread">0</span></div>
+            <div class="coin-display">🪙 <span id="coins-display">200</span></div>
+            <button class="btn btn-info" id="btn-toggle-sidebar">📋</button>
+            <button class="btn btn-gold" id="btn-save">💾</button>
+            <button class="btn btn-gold" id="btn-load">📂</button>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <div class="sidebar-title">🏗️ Construir</div>
+        <div id="build-list"></div>
+        <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.1);padding-top:12px;">
+            <button class="btn btn-danger" id="btn-destroy-mode" style="width:100%;">🗑️ Modo Destruir</button>
+            <button class="btn btn-primary" id="btn-expand" style="width:100%;margin-top:8px;">🌾 Expandir Terreno</button>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div id="toast-container"></div>
+    
+    <!-- Controls hint -->
+    <div id="controls-hint">🖱️ Clique esquerdo: construir • Clique direito: colher • Rolar: zoom • Arrastar: rotacionar</div>
 </div>
-<div class="footer-note">Vale Dourado — jogo original, roda 100% offline no navegador. Use Salvar/Carregar para manter seu progresso entre sessões.</div>
-<div id="toast-container"></div>
-<input type="file" id="load-input" hidden accept="application/json">
 
-<script>
-(function(){
-  "use strict";
-
-  /* ============ SISTEMA DE MÚSICA ============ */
-  let musicContext = null;
-  let musicNodes = [];
-  let isMusicPlaying = false;
-  let musicGainNode = null;
-  let musicInterval = null;
-
-  function initAudio() {
-    if (!musicContext) {
-      musicContext = new (window.AudioContext || window.webkitAudioContext)();
-      musicGainNode = musicContext.createGain();
-      musicGainNode.gain.value = 0.3;
-      musicGainNode.connect(musicContext.destination);
+<!-- Three.js -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
     }
-    if (musicContext.state === 'suspended') {
-      musicContext.resume();
-    }
-  }
+}
+</script>
 
-  const NOTES = {
-    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, 
-    G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25,
-    D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99
-  };
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-  const FARM_MELODY = [
-    { note: 'C4', duration: 0.3 }, { note: 'E4', duration: 0.3 },
-    { note: 'G4', duration: 0.3 }, { note: 'C5', duration: 0.4 },
-    { note: 'B4', duration: 0.3 }, { note: 'G4', duration: 0.3 },
-    { note: 'E4', duration: 0.3 }, { note: 'D4', duration: 0.4 },
-    { note: 'C4', duration: 0.3 }, { note: 'E4', duration: 0.3 },
-    { note: 'G4', duration: 0.3 }, { note: 'C5', duration: 0.4 },
-    { note: 'D5', duration: 0.3 }, { note: 'C5', duration: 0.3 },
-    { note: 'G4', duration: 0.3 }, { note: 'E4', duration: 0.4 },
-    { note: 'F4', duration: 0.3 }, { note: 'A4', duration: 0.3 },
-    { note: 'C5', duration: 0.3 }, { note: 'F5', duration: 0.4 },
-    { note: 'E5', duration: 0.3 }, { note: 'C5', duration: 0.3 },
-    { note: 'A4', duration: 0.3 }, { note: 'G4', duration: 0.4 },
-    { note: 'G4', duration: 0.3 }, { note: 'B4', duration: 0.3 },
-    { note: 'D5', duration: 0.3 }, { note: 'G5', duration: 0.4 },
-    { note: 'F5', duration: 0.3 }, { note: 'D5', duration: 0.3 },
-    { note: 'B4', duration: 0.3 }, { note: 'C5', duration: 0.6 },
-  ];
+// ============================================================
+//  CONFIGURAÇÃO
+// ============================================================
+const GRID_SIZE = 6;
+const TILE_SIZE = 2;
+const TILE_OFFSET = (GRID_SIZE - 1) * TILE_SIZE / 2;
 
-  function playNote(frequency, duration, time) {
-    if (!musicContext) return;
-    try {
-      const oscillator = musicContext.createOscillator();
-      const gainNode = musicContext.createGain();
-      oscillator.type = 'triangle';
-      oscillator.frequency.value = frequency;
-      gainNode.gain.setValueAtTime(0.3, time);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
-      oscillator.connect(gainNode);
-      gainNode.connect(musicGainNode);
-      oscillator.start(time);
-      oscillator.stop(time + duration);
-      if (Math.random() > 0.7) {
-        const delayGain = musicContext.createGain();
-        delayGain.gain.value = 0.05;
-        const delay = musicContext.createDelay(0.5);
-        delay.delayTime.value = 0.1;
-        gainNode.connect(delay);
-        delay.connect(delayGain);
-        delayGain.connect(musicGainNode);
-      }
-      musicNodes.push(oscillator);
-      setTimeout(() => {
-        const idx = musicNodes.indexOf(oscillator);
-        if (idx > -1) musicNodes.splice(idx, 1);
-      }, (duration + 0.1) * 1000);
-    } catch(e) {}
-  }
+const RESOURCES = {
+    wheat: { name: 'Trigo', icon: '🌾', sellPrice: 2 },
+    corn: { name: 'Milho', icon: '🌽', sellPrice: 3 },
+    carrot: { name: 'Cenoura', icon: '🥕', sellPrice: 5 },
+    flour: { name: 'Farinha', icon: '🧂', sellPrice: 10 },
+    egg: { name: 'Ovos', icon: '🥚', sellPrice: 8 },
+    bread: { name: 'Pão', icon: '🍞', sellPrice: 22 },
+};
 
-  function playFarmMusic() {
-    if (!isMusicPlaying) return;
-    if (!musicContext) return;
-    let time = musicContext.currentTime + 0.05;
-    FARM_MELODY.forEach((note, index) => {
-      const freq = NOTES[note.note];
-      if (freq) {
-        playNote(freq, note.duration, time);
-        time += note.duration + 0.05;
-        if (index % 4 === 0 && Math.random() > 0.6) {
-          const harmonyNote = getHarmonyNote(note.note);
-          if (harmonyNote) {
-            const harmonyFreq = NOTES[harmonyNote];
-            playNote(harmonyFreq, note.duration * 0.7, time - note.duration - 0.02);
-          }
-        }
-      }
-    });
-    const totalDuration = FARM_MELODY.reduce((sum, n) => sum + n.duration + 0.05, 0);
-    musicInterval = setTimeout(() => {
-      if (isMusicPlaying) playFarmMusic();
-    }, (totalDuration + 0.5) * 1000);
-  }
+const BUILDABLES = {
+    wheat_field: {
+        cat: 'crop',
+        name: 'Campo de Trigo',
+        icon: '🌾',
+        cost: 10,
+        growTime: 30,
+        yieldRes: 'wheat',
+        yieldAmt: 3,
+        levelReq: 1,
+        color: 0x4CAF50,
+        model: 'crop'
+    },
+    corn_field: {
+        cat: 'crop',
+        name: 'Campo de Milho',
+        icon: '🌽',
+        cost: 25,
+        growTime: 45,
+        yieldRes: 'corn',
+        yieldAmt: 3,
+        levelReq: 2,
+        color: 0x8BC34A,
+        model: 'crop'
+    },
+    carrot_field: {
+        cat: 'crop',
+        name: 'Campo de Cenoura',
+        icon: '🥕',
+        cost: 45,
+        growTime: 60,
+        yieldRes: 'carrot',
+        yieldAmt: 3,
+        levelReq: 3,
+        color: 0xFF9800,
+        model: 'crop'
+    },
+    mill: {
+        cat: 'factory',
+        name: 'Moinho',
+        icon: '⚙️',
+        cost: 60,
+        time: 25,
+        input: { wheat: 3 },
+        outputRes: 'flour',
+        outputAmt: 2,
+        levelReq: 1,
+        color: 0x78909C,
+        model: 'factory'
+    },
+    coop: {
+        cat: 'factory',
+        name: 'Galinheiro',
+        icon: '🐔',
+        cost: 90,
+        time: 40,
+        input: { corn: 3 },
+        outputRes: 'egg',
+        outputAmt: 3,
+        levelReq: 2,
+        color: 0xD32F2F,
+        model: 'factory'
+    },
+    bakery: {
+        cat: 'factory',
+        name: 'Padaria',
+        icon: '🍞',
+        cost: 150,
+        time: 35,
+        input: { flour: 2, egg: 1 },
+        outputRes: 'bread',
+        outputAmt: 2,
+        levelReq: 3,
+        color: 0x8D6E63,
+        model: 'factory'
+    },
+};
 
-  function getHarmonyNote(note) {
-    const harmonyMap = {
-      'C4': 'E4', 'E4': 'G4', 'G4': 'C5', 'C5': 'G4',
-      'D4': 'F4', 'F4': 'A4', 'A4': 'C5', 'D5': 'F5',
-      'G4': 'B4', 'B4': 'D5', 'F5': 'D5', 'E5': 'C5'
-    };
-    return harmonyMap[note] || null;
-  }
+const LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1800, 2800];
+const SLOT_UPGRADE_COST = [50, 100, 200, 350, 550, 800];
 
-  function toggleMusic() {
-    if (isMusicPlaying) {
-      stopMusic();
-    } else {
-      startMusic();
-    }
-    updateMusicButton();
-  }
-
-  function startMusic() {
-    try {
-      initAudio();
-      isMusicPlaying = true;
-      if (musicInterval) {
-        clearTimeout(musicInterval);
-        musicInterval = null;
-      }
-      setTimeout(() => {
-        if (isMusicPlaying) playFarmMusic();
-      }, 200);
-      toast('🎵 Música ligada!');
-    } catch(e) {
-      toast('Erro ao iniciar música.');
-    }
-  }
-
-  function stopMusic() {
-    isMusicPlaying = false;
-    if (musicInterval) {
-      clearTimeout(musicInterval);
-      musicInterval = null;
-    }
-    musicNodes.forEach(node => {
-      try { node.stop(); } catch(e) {}
-    });
-    musicNodes = [];
-    toast('🔇 Música desligada');
-  }
-
-  function updateMusicButton() {
-    const btn = document.getElementById('music-toggle');
-    if (btn) {
-      btn.className = `icon-btn ${isMusicPlaying ? 'music-on' : 'music-off'}`;
-      btn.innerHTML = isMusicPlaying ? '🔊 Música' : '🔇 Música';
-    }
-  }
-
-  /* ============ DADOS DO JOGO ============ */
-  const MAX_GRID_SIZE = 64;
-  let GRID_SIZE = 40;
-
-  const SELL_PRICES = { 
-    wheat:2, corn:3, carrot:5, flour:10, egg:8, bread:22,
-    grape:6, pumpkin:7, wine:35, candy:28, cachaça:40
-  };
-
-  const RESOURCE_INFO = {
-    wheat:{name:'Trigo', icon:'🌾'}, corn:{name:'Milho', icon:'🌽'}, 
-    carrot:{name:'Cenoura', icon:'🥕'}, flour:{name:'Farinha', icon:'🧂'}, 
-    egg:{name:'Ovos', icon:'🥚'}, bread:{name:'Pão', icon:'🍞'},
-    grape:{name:'Uva', icon:'🍇'}, pumpkin:{name:'Abóbora', icon:'🎃'},
-    wine:{name:'Vinho', icon:'🍷'}, candy:{name:'Doce de Abóbora', icon:'🍬'},
-    cachaça:{name:'Cachaça', icon:'🥃'}
-  };
-
-  const PLACEABLES = {
-    // Plantações básicas
-    wheat_field:{ cat:'crop', name:'Campo de Trigo', icon:'🌾', cost:10, growTime:60, yieldRes:'wheat', yieldAmt:3, levelReq:1 },
-    corn_field:{ cat:'crop', name:'Campo de Milho', icon:'🌽', cost:25, growTime:90, yieldRes:'corn', yieldAmt:3, levelReq:2 },
-    carrot_field:{ cat:'crop', name:'Campo de Cenoura', icon:'🥕', cost:45, growTime:130, yieldRes:'carrot', yieldAmt:3, levelReq:3 },
-    grape_field:{ cat:'crop', name:'Vinhedo', icon:'🍇', cost:80, growTime:150, yieldRes:'grape', yieldAmt:4, levelReq:4 },
-    pumpkin_field:{ cat:'crop', name:'Campo de Abóbora', icon:'🎃', cost:70, growTime:140, yieldRes:'pumpkin', yieldAmt:3, levelReq:4 },
-    
-    // Fábricas básicas
-    mill:{ cat:'factory', name:'Moinho', icon:'⚙️', cost:60, time:50, input:{wheat:3}, outputRes:'flour', outputAmt:2, levelReq:1 },
-    coop:{ cat:'factory', name:'Galinheiro', icon:'🐔', cost:90, time:100, input:{corn:3}, outputRes:'egg', outputAmt:3, levelReq:2 },
-    bakery:{ cat:'factory', name:'Padaria', icon:'🍞', cost:150, time:90, input:{flour:2, egg:1}, outputRes:'bread', outputAmt:2, levelReq:3 },
-    
-    // Novas fábricas
-    winery:{ cat:'factory', name:'Vinicultura', icon:'🍷', cost:200, time:120, input:{grape:4}, outputRes:'wine', outputAmt:2, levelReq:5 },
-    candy_factory:{ cat:'factory', name:'Confeitaria', icon:'🍬', cost:180, time:100, input:{pumpkin:3}, outputRes:'candy', outputAmt:3, levelReq:5 },
-    cachaça_factory:{ cat:'factory', name:'Cachaçaria', icon:'🥃', cost:250, time:150, input:{wine:2, grape:3}, outputRes:'cachaça', outputAmt:2, levelReq:6 },
-  };
-
-  const RESOURCE_MIN_LEVEL = { 
-    wheat:1, flour:1, corn:2, egg:2, carrot:3, bread:3,
-    grape:4, pumpkin:4, wine:5, candy:5, cachaça:6
-  };
-
-  const LEVEL_THRESHOLDS = [0, 150, 400, 900, 1800, 3200, 5200, 8000];
-
-  const SLOT_UPGRADE_COST = [100, 200, 350, 550, 800, 1100, 1500, 2000, 2600, 3300];
-
-  /* ============ ESTADO ============ */
-  let state = {
+// ============================================================
+//  ESTADO
+// ============================================================
+let state = {
     coins: 200,
     totalEarned: 200,
-    resources: { wheat:0, corn:0, carrot:0, flour:0, egg:0, bread:0, grape:0, pumpkin:0, wine:0, candy:0, cachaça:0 },
+    resources: { wheat: 0, corn: 0, carrot: 0, flour: 0, egg: 0, bread: 0 },
     grid: [],
-    orders: [],
-    nextOrderIn: 8,
     selectedBuild: null,
-    activeTab: 'build',
-    gridSize: 40,
     destroyMode: false,
-  };
+    gridSize: GRID_SIZE,
+};
 
-  let orderIdCounter = 1;
+// Inicializar grid
+function initGrid() {
+    const size = state.gridSize || GRID_SIZE;
+    state.grid = Array.from({ length: size * size }, () => ({
+        key: null,
+        stage: null,
+        progress: 0,
+        meshGroup: null,
+    }));
+}
 
-  // Inicializar grid
-  function initGrid(size) {
-    state.grid = Array.from({length:size}, () => ({ key:null }));
-    GRID_SIZE = size;
-    state.gridSize = size;
-  }
-  initGrid(40);
+initGrid();
 
-  /* ============ HELPERS ============ */
-  function getLevel(){
+// ============================================================
+//  CENA THREE.JS
+// ============================================================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 25, 40);
+
+// Câmera Isométrica
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(18, 16, 18);
+camera.lookAt(0, 0, 0);
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.prepend(renderer.domElement);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.5, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2.4;
+controls.minPolarAngle = Math.PI / 4;
+controls.minDistance = 6;
+controls.maxDistance = 30;
+controls.update();
+
+// ============================================================
+//  LUZES
+// ============================================================
+const ambientLight = new THREE.AmbientLight(0x8899bb, 0.5);
+scene.add(ambientLight);
+
+const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x3e7a3e, 0.6);
+scene.add(hemisphereLight);
+
+const sunLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+sunLight.position.set(15, 25, 10);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 4096;
+sunLight.shadow.mapSize.height = 4096;
+sunLight.shadow.camera.near = 0.1;
+sunLight.shadow.camera.far = 50;
+sunLight.shadow.camera.left = -20;
+sunLight.shadow.camera.right = 20;
+sunLight.shadow.camera.top = 20;
+sunLight.shadow.camera.bottom = -20;
+scene.add(sunLight);
+
+const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+fillLight.position.set(-10, 5, -10);
+scene.add(fillLight);
+
+// ============================================================
+//  CRIAR ELEMENTOS 3D
+// ============================================================
+const tileMeshes = [];
+const tileData = [];
+
+// Texturas de grama
+function createGrassTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#4CAF50';
+    ctx.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 2000; i++) {
+        const x = Math.random() * 128;
+        const y = Math.random() * 128;
+        const size = 1 + Math.random() * 2;
+        const shade = 60 + Math.random() * 80;
+        ctx.fillStyle = `rgb(${shade}, ${shade + 60}, ${shade - 20})`;
+        ctx.fillRect(x, y, size, size);
+    }
+    return new THREE.CanvasTexture(canvas);
+}
+
+const grassTexture = createGrassTexture();
+
+// Criar tile 3D
+function createTile3D(x, z, color = 0x4CAF50, isOccupied = false) {
+    const group = new THREE.Group();
+    
+    // Base do tile
+    const baseGeo = new THREE.BoxGeometry(TILE_SIZE - 0.1, 0.3, TILE_SIZE - 0.1);
+    const baseMat = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.8,
+        metalness: 0.1,
+        map: grassTexture,
+    });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.15;
+    base.receiveShadow = true;
+    base.castShadow = true;
+    group.add(base);
+    
+    // Borda
+    const borderGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(TILE_SIZE - 0.05, 0.35, TILE_SIZE - 0.05));
+    const borderMat = new THREE.LineBasicMaterial({ 
+        color: isOccupied ? 0x8BC34A : 0x2d5a1e, 
+        transparent: true, 
+        opacity: isOccupied ? 0.5 : 0.2 
+    });
+    const border = new THREE.LineSegments(borderGeo, borderMat);
+    border.position.y = 0.15;
+    group.add(border);
+    
+    group.position.set(x, 0, z);
+    scene.add(group);
+    
+    return group;
+}
+
+// Criar planta (modelo procedural)
+function createPlantModel(type = 'wheat', progress = 0) {
+    const group = new THREE.Group();
+    const isReady = progress >= 1;
+    const scale = 0.5 + progress * 0.8;
+    
+    // Caule
+    const stemGeo = new THREE.CylinderGeometry(0.04 * scale, 0.06 * scale, 0.4 * scale, 6);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d8a4e, roughness: 0.8 });
+    const stem = new THREE.Mesh(stemGeo, stemMat);
+    stem.position.y = 0.2 * scale;
+    stem.castShadow = true;
+    group.add(stem);
+    
+    if (type === 'wheat') {
+        // Folhas de trigo
+        for (let i = 0; i < 4; i++) {
+            const leafGeo = new THREE.PlaneGeometry(0.15 * scale, 0.3 * scale);
+            const leafMat = new THREE.MeshStandardMaterial({ 
+                color: isReady ? 0xf5c542 : 0x4CAF50,
+                side: THREE.DoubleSide,
+                roughness: 0.8
+            });
+            const leaf = new THREE.Mesh(leafGeo, leafMat);
+            leaf.position.y = 0.25 * scale + i * 0.08 * scale;
+            leaf.rotation.y = (i / 4) * Math.PI * 2;
+            leaf.rotation.z = 0.3;
+            leaf.castShadow = true;
+            group.add(leaf);
+        }
+        // Espiga
+        if (isReady) {
+            const headGeo = new THREE.SphereGeometry(0.08 * scale, 6, 6);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.6, metalness: 0.2 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 0.5 * scale;
+            head.scale.y = 1.5;
+            head.castShadow = true;
+            group.add(head);
+        }
+    } else if (type === 'corn') {
+        // Folhas de milho
+        for (let i = 0; i < 5; i++) {
+            const leafGeo = new THREE.PlaneGeometry(0.2 * scale, 0.4 * scale);
+            const leafMat = new THREE.MeshStandardMaterial({ 
+                color: isReady ? 0xf5c542 : 0x66BB6A,
+                side: THREE.DoubleSide,
+                roughness: 0.8
+            });
+            const leaf = new THREE.Mesh(leafGeo, leafMat);
+            leaf.position.y = 0.2 * scale + i * 0.1 * scale;
+            leaf.rotation.y = (i / 5) * Math.PI * 2 + 0.2;
+            leaf.rotation.x = 0.4;
+            leaf.castShadow = true;
+            group.add(leaf);
+        }
+        // Espiga de milho
+        if (isReady) {
+            const cobGeo = new THREE.CylinderGeometry(0.06 * scale, 0.08 * scale, 0.25 * scale, 8);
+            const cobMat = new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.7 });
+            const cob = new THREE.Mesh(cobGeo, cobMat);
+            cob.position.y = 0.45 * scale;
+            cob.rotation.x = 0.2;
+            cob.castShadow = true;
+            group.add(cob);
+        }
+    } else if (type === 'carrot') {
+        // Folhas de cenoura
+        for (let i = 0; i < 3; i++) {
+            const leafGeo = new THREE.PlaneGeometry(0.12 * scale, 0.25 * scale);
+            const leafMat = new THREE.MeshStandardMaterial({ 
+                color: isReady ? 0xFF9800 : 0x4CAF50,
+                side: THREE.DoubleSide,
+                roughness: 0.8
+            });
+            const leaf = new THREE.Mesh(leafGeo, leafMat);
+            leaf.position.y = 0.2 * scale + i * 0.05 * scale;
+            leaf.rotation.y = (i / 3) * Math.PI * 2;
+            leaf.rotation.z = 0.5;
+            leaf.castShadow = true;
+            group.add(leaf);
+        }
+        // Cenoura
+        if (isReady) {
+            const carrotGeo = new THREE.ConeGeometry(0.08 * scale, 0.3 * scale, 8);
+            const carrotMat = new THREE.MeshStandardMaterial({ color: 0xFF6F00, roughness: 0.7 });
+            const carrot = new THREE.Mesh(carrotGeo, carrotMat);
+            carrot.position.y = 0.15 * scale;
+            carrot.castShadow = true;
+            group.add(carrot);
+        }
+    }
+    
+    return group;
+}
+
+// Criar fábrica (modelo procedural)
+function createFactoryModel(type = 'mill', progress = 0) {
+    const group = new THREE.Group();
+    const isReady = progress >= 1;
+    const isWorking = progress > 0 && progress < 1;
+    
+    if (type === 'mill') {
+        // Base
+        const baseGeo = new THREE.CylinderGeometry(0.4, 0.5, 0.3, 8);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x78909C, roughness: 0.9 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.15;
+        base.castShadow = true;
+        group.add(base);
+        
+        // Moinho
+        const bodyGeo = new THREE.CylinderGeometry(0.3, 0.35, 0.5, 8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: isReady ? 0x8D6E63 : 0x78909C, roughness: 0.8 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.4;
+        body.castShadow = true;
+        group.add(body);
+        
+        // Pedra de moinho (girando se estiver trabalhando)
+        const stoneGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.08, 8);
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, roughness: 0.9 });
+        const stone = new THREE.Mesh(stoneGeo, stoneMat);
+        stone.position.y = 0.6;
+        stone.castShadow = true;
+        if (isWorking) {
+            stone.userData.rotating = true;
+        }
+        group.add(stone);
+        
+        // Chaminé
+        const chimneyGeo = new THREE.CylinderGeometry(0.05, 0.08, 0.2, 6);
+        const chimneyMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, roughness: 0.9 });
+        const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
+        chimney.position.set(0.2, 0.5, 0.2);
+        chimney.castShadow = true;
+        group.add(chimney);
+        
+    } else if (type === 'coop') {
+        // Base
+        const baseGeo = new THREE.BoxGeometry(0.7, 0.2, 0.7);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x8D6E63, roughness: 0.9 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.1;
+        base.castShadow = true;
+        group.add(base);
+        
+        // Corpo
+        const bodyGeo = new THREE.BoxGeometry(0.6, 0.35, 0.6);
+        const bodyMat = new THREE.MeshStandardMaterial({ 
+            color: isReady ? 0xD32F2F : 0x8D6E63, 
+            roughness: 0.8 
+        });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.3;
+        body.castShadow = true;
+        group.add(body);
+        
+        // Telhado
+        const roofGeo = new THREE.ConeGeometry(0.5, 0.3, 4);
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0xD32F2F, roughness: 0.7 });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.y = 0.55;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
+        
+        // Galinha (se estiver pronta)
+        if (isReady) {
+            const chickenGroup = new THREE.Group();
+            // Corpo
+            const bodyChicken = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1, 6, 6),
+                new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.7 })
+            );
+            bodyChicken.scale.set(1.2, 1, 0.8);
+            chickenGroup.add(bodyChicken);
+            // Cabeça
+            const headChicken = new THREE.Mesh(
+                new THREE.SphereGeometry(0.07, 6, 6),
+                new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.7 })
+            );
+            headChicken.position.set(0.12, 0.05, 0);
+            chickenGroup.add(headChicken);
+            // Bico
+            const beak = new THREE.Mesh(
+                new THREE.ConeGeometry(0.02, 0.04, 4),
+                new THREE.MeshStandardMaterial({ color: 0xff6f00, roughness: 0.8 })
+            );
+            beak.position.set(0.18, 0.02, 0);
+            beak.rotation.z = 0.2;
+            chickenGroup.add(beak);
+            
+            chickenGroup.position.set(0, 0.25, 0);
+            chickenGroup.scale.set(0.8, 0.8, 0.8);
+            group.add(chickenGroup);
+        }
+        
+    } else if (type === 'bakery') {
+        // Base
+        const baseGeo = new THREE.BoxGeometry(0.7, 0.15, 0.7);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x8D6E63, roughness: 0.9 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.075;
+        base.castShadow = true;
+        group.add(base);
+        
+        // Corpo
+        const bodyGeo = new THREE.BoxGeometry(0.6, 0.4, 0.6);
+        const bodyMat = new THREE.MeshStandardMaterial({ 
+            color: isReady ? 0xFF9800 : 0x8D6E63, 
+            roughness: 0.8 
+        });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.3;
+        body.castShadow = true;
+        group.add(body);
+        
+        // Telhado
+        const roofGeo = new THREE.ConeGeometry(0.5, 0.25, 4);
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0xD32F2F, roughness: 0.7 });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.y = 0.55;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
+        
+        // Pão (se estiver pronto)
+        if (isReady) {
+            const breadGroup = new THREE.Group();
+            const breadMat = new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.7 });
+            const bread1 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), breadMat);
+            bread1.scale.set(1.2, 0.8, 0.8);
+            bread1.position.set(-0.08, 0.15, 0);
+            breadGroup.add(bread1);
+            const bread2 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), breadMat);
+            bread2.scale.set(1.2, 0.8, 0.8);
+            bread2.position.set(0.08, 0.15, 0);
+            breadGroup.add(bread2);
+            group.add(breadGroup);
+        }
+    }
+    
+    group.position.y = 0.3;
+    return group;
+}
+
+// ============================================================
+//  FUNÇÕES DO JOGO
+// ============================================================
+function getLevel() {
     let lvl = 1;
-    for(let i=1;i<LEVEL_THRESHOLDS.length;i++){
-      if(state.totalEarned >= LEVEL_THRESHOLDS[i]) lvl = i+1;
+    for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+        if (state.totalEarned >= LEVEL_THRESHOLDS[i]) lvl = i + 1;
     }
     return Math.min(lvl, LEVEL_THRESHOLDS.length);
-  }
-  function xpProgress(){
-    const lvl = getLevel();
-    const idx = lvl-1;
-    const cur = LEVEL_THRESHOLDS[idx] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length-1];
-    const next = LEVEL_THRESHOLDS[idx+1];
-    if(next === undefined) return 100;
-    const span = next - cur;
-    return Math.max(0, Math.min(100, ((state.totalEarned - cur)/span)*100));
-  }
-  function fmt(n){ return Math.floor(n).toLocaleString('pt-BR'); }
-  function toast(msg){
-    const c = document.getElementById('toast-container');
+}
+
+function fmt(n) { return Math.floor(n).toLocaleString('pt-BR'); }
+
+function toast(msg, type = 'info') {
+    const container = document.getElementById('toast-container');
     const el = document.createElement('div');
-    el.className='toast'; el.textContent = msg;
-    c.appendChild(el);
-    setTimeout(()=> el.remove(), 3000);
-  }
-  function hasEnough(inputDict){
-    return Object.entries(inputDict).every(([res,qty]) => (state.resources[res] || 0) >= qty);
-  }
-  function consume(inputDict){
-    Object.entries(inputDict).forEach(([res,qty]) => state.resources[res] -= qty);
-  }
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => {
+        el.style.animation = 'toastOut 0.3s ease';
+        setTimeout(() => el.remove(), 300);
+    }, 2500);
+}
 
-  /* ============ PARTÍCULAS DE COLHEITA ============ */
-  function createHarvestEffect(element) {
-    const rect = element.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    const emojis = ['✨', '⭐', '🌟', '💫', '🎉'];
-    for (let i = 0; i < 10; i++) {
-      const el = document.createElement('div');
-      el.className = 'harvest-particle';
-      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-      const angle = (Math.random() * Math.PI * 2);
-      const distance = 60 + Math.random() * 80;
-      el.style.cssText = `
-        left: ${x}px; top: ${y}px;
-        font-size: ${16 + Math.random() * 20}px;
-        --tx: ${Math.cos(angle) * distance}px;
-        --ty: ${Math.sin(angle) * distance - 40}px;
-        animation-delay: ${Math.random() * 0.2}s;
-      `;
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 1000);
+function hasEnough(inputDict) {
+    return Object.entries(inputDict).every(([res, qty]) => (state.resources[res] || 0) >= qty);
+}
+
+function consume(inputDict) {
+    Object.entries(inputDict).forEach(([res, qty]) => state.resources[res] -= qty);
+}
+
+function getTileIndex(col, row) {
+    return row * state.gridSize + col;
+}
+
+function getTilePos(index) {
+    const col = index % state.gridSize;
+    const row = Math.floor(index / state.gridSize);
+    const x = col * TILE_SIZE - TILE_OFFSET;
+    const z = row * TILE_SIZE - TILE_OFFSET;
+    return { col, row, x, z };
+}
+
+// ============================================================
+//  RENDERIZAR GRID 3D
+// ============================================================
+function renderGrid3D() {
+    // Limpar tiles antigos
+    tileMeshes.forEach(mesh => scene.remove(mesh));
+    tileMeshes.length = 0;
+    tileData.length = 0;
+    
+    const size = state.gridSize;
+    
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            const idx = getTileIndex(col, row);
+            const tile = state.grid[idx];
+            const pos = getTilePos(idx);
+            
+            const isOccupied = tile.key !== null;
+            const color = isOccupied ? 0x6d8a4e : 0x4CAF50;
+            
+            const group = createTile3D(pos.x, pos.z, color, isOccupied);
+            tileMeshes.push(group);
+            tileData.push({ idx, col, row, group, tile });
+            
+            // Se ocupado, adicionar modelo
+            if (tile.key) {
+                addModelToTile(idx);
+            }
+        }
     }
-  }
+}
 
-  /* ============ LOOP PRINCIPAL ============ */
-  let lastTick = Date.now();
-  function tick(){
-    const now = Date.now();
-    const dt = (now - lastTick)/1000;
-    lastTick = now;
+function addModelToTile(idx) {
+    const tile = state.grid[idx];
+    const def = BUILDABLES[tile.key];
+    if (!def) return;
+    
+    const pos = getTilePos(idx);
+    const group = new THREE.Group();
+    let model;
+    
+    if (def.cat === 'crop') {
+        const type = tile.key.replace('_field', '');
+        model = createPlantModel(type, tile.progress || 0);
+    } else {
+        model = createFactoryModel(tile.key, tile.progress || 0);
+    }
+    
+    group.add(model);
+    group.position.set(pos.x, 0, pos.z);
+    
+    // Adicionar indicador de progresso
+    if (tile.stage === 'growing' || tile.stage === 'processing') {
+        const progressBar = createProgressBar(tile.progress || 0);
+        group.add(progressBar);
+    }
+    
+    // Adicionar marcador de pronto
+    if (tile.stage === 'ready') {
+        const marker = createReadyMarker();
+        group.add(marker);
+    }
+    
+    scene.add(group);
+    tile.meshGroup = group;
+    tileMeshes.push(group);
+}
 
-    state.grid.forEach(tile => {
-      if(!tile.key) return;
-      const def = PLACEABLES[tile.key];
-      if(!def) return;
-      if(tile.stage === 'growing' || tile.stage === 'processing'){
-        tile.progress += dt / (def.growTime || def.time);
-        if(tile.progress >= 1){
-          tile.progress = 1;
-          tile.stage = 'ready';
-        }
-      } else if(tile.stage === 'idle' && def.cat === 'factory'){
-        if(hasEnough(def.input)){
-          consume(def.input);
-          tile.stage = 'processing';
-          tile.progress = 0;
-        }
-      }
+function createProgressBar(progress) {
+    const group = new THREE.Group();
+    const width = 0.8;
+    const height = 0.05;
+    
+    const bgGeo = new THREE.PlaneGeometry(width, height);
+    const bgMat = new THREE.MeshStandardMaterial({ 
+        color: 0x333333, 
+        transparent: true, 
+        opacity: 0.6,
+        side: THREE.DoubleSide
     });
+    const bg = new THREE.Mesh(bgGeo, bgMat);
+    bg.position.y = 0.7;
+    group.add(bg);
+    
+    const fillGeo = new THREE.PlaneGeometry(width * Math.min(progress, 1), height - 0.01);
+    const fillMat = new THREE.MeshStandardMaterial({ 
+        color: 0xf5c542, 
+        side: THREE.DoubleSide 
+    });
+    const fill = new THREE.Mesh(fillGeo, fillMat);
+    fill.position.set((progress - 0.5) * width * 0.5, 0.7, 0.01);
+    group.add(fill);
+    
+    return group;
+}
 
-    state.nextOrderIn -= dt;
-    if(state.nextOrderIn <= 0){
-      if(state.orders.length < 4) generateOrder();
-      state.nextOrderIn = 25 + Math.random()*10;
+function createReadyMarker() {
+    const group = new THREE.Group();
+    
+    // Anel brilhante
+    const ringGeo = new THREE.RingGeometry(0.2, 0.3, 16);
+    const ringMat = new THREE.MeshStandardMaterial({
+        color: 0xf5c542,
+        emissive: 0xf5c542,
+        emissiveIntensity: 0.5,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.75;
+    group.add(ring);
+    
+    // Estrela
+    const starGroup = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+        const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+        const spike = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.04, 0.12),
+            new THREE.MeshStandardMaterial({
+                color: 0xf5c542,
+                emissive: 0xf5c542,
+                emissiveIntensity: 0.3,
+                side: THREE.DoubleSide
+            })
+        );
+        spike.position.set(Math.cos(angle) * 0.12, 0.75, Math.sin(angle) * 0.12);
+        spike.rotation.y = -angle;
+        starGroup.add(spike);
     }
+    group.add(starGroup);
+    
+    return group;
+}
 
-    renderHeader();
-    renderGrid();
-  }
+// ============================================================
+//  AÇÕES DO JOGO
+// ============================================================
+function selectBuild(key) {
+    const def = BUILDABLES[key];
+    if (getLevel() < def.levelReq) {
+        toast(`🔒 Desbloqueia no nível ${def.levelReq}`, 'error');
+        return;
+    }
+    if (state.destroyMode) toggleDestroyMode();
+    state.selectedBuild = state.selectedBuild === key ? null : key;
+    updateUI();
+    updateSidebar();
+}
 
-  /* ============ AÇÕES ============ */
-  function selectBuild(key){
-    const def = PLACEABLES[key];
-    if(getLevel() < def.levelReq) return;
-    if(state.destroyMode) toggleDestroyMode();
-    state.selectedBuild = (state.selectedBuild === key) ? null : key;
-    renderAll();
-  }
-
-  function toggleDestroyMode() {
+function toggleDestroyMode() {
     state.destroyMode = !state.destroyMode;
-    if(state.destroyMode) state.selectedBuild = null;
-    renderAll();
-    toast(state.destroyMode ? '🗑️ Modo destruir ativado - Clique em uma construção para removê-la' : '🔧 Modo destruir desativado');
-  }
+    state.selectedBuild = null;
+    updateUI();
+    updateSidebar();
+    toast(state.destroyMode ? '🗑️ Modo destruir ativado' : '🔧 Modo destruir desativado', 
+          state.destroyMode ? 'error' : 'info');
+}
 
-  function handleTileClick(index, isRightClick = false) {
+function handleTileClick(index, isRightClick = false) {
     const tile = state.grid[index];
+    const pos = getTilePos(index);
     
     // Modo destruir
-    if(state.destroyMode && tile.key) {
-      const def = PLACEABLES[tile.key];
-      if(confirm(`Remover ${def.icon} ${def.name}?`)) {
-        // Reembolsar metade do custo
-        const refund = Math.floor(def.cost * 0.5);
-        state.coins += refund;
-        state.grid[index] = { key: null };
-        toast(`🗑️ ${def.name} removido! +${fmt(refund)} 🪙 reembolsados`);
-        renderAll();
-      }
-      return;
+    if (state.destroyMode && tile.key) {
+        const def = BUILDABLES[tile.key];
+        if (confirm(`Remover ${def.icon} ${def.name}?`)) {
+            // Remover modelo 3D
+            if (tile.meshGroup) {
+                scene.remove(tile.meshGroup);
+                tile.meshGroup = null;
+            }
+            const refund = Math.floor(def.cost * 0.5);
+            state.coins += refund;
+            tile.key = null;
+            tile.stage = null;
+            tile.progress = 0;
+            toast(`🗑️ Removido! +${fmt(refund)} 🪙`, 'info');
+            renderGrid3D();
+            updateUI();
+            updateSidebar();
+        }
+        return;
     }
-
-    // Construir em terreno vazio (clique esquerdo)
-    if(!tile.key && !isRightClick && state.selectedBuild) {
-      const bdef = PLACEABLES[state.selectedBuild];
-      if(state.coins < bdef.cost) { toast('Moedas insuficientes.'); return; }
-      state.coins -= bdef.cost;
-      tile.key = state.selectedBuild;
-      tile.progress = 0;
-      tile.stage = bdef.cat === 'crop' ? 'growing' : 'idle';
-      toast(`${bdef.icon} ${bdef.name} construído!`);
-      renderAll();
-      return;
+    
+    // Construir (clique esquerdo)
+    if (!tile.key && !isRightClick && state.selectedBuild) {
+        const def = BUILDABLES[state.selectedBuild];
+        if (state.coins < def.cost) {
+            toast('🪙 Moedas insuficientes!', 'error');
+            return;
+        }
+        state.coins -= def.cost;
+        tile.key = state.selectedBuild;
+        tile.progress = 0;
+        tile.stage = def.cat === 'crop' ? 'growing' : 'idle';
+        toast(`${def.icon} ${def.name} construído!`, 'success');
+        renderGrid3D();
+        updateUI();
+        updateSidebar();
+        return;
     }
-
+    
     // Coletar (clique direito)
-    if(tile.key && isRightClick && tile.stage === 'ready') {
-      const def = PLACEABLES[tile.key];
-      const tileElement = document.querySelector(`[data-tile-index="${index}"]`);
-      if(tileElement) {
-        tileElement.querySelector('span')?.classList.add('anim-harvest');
-        createHarvestEffect(tileElement);
-        setTimeout(() => {
-          tileElement.querySelector('span')?.classList.remove('anim-harvest');
-        }, 500);
-      }
-
-      if(def.cat === 'crop'){
-        state.resources[def.yieldRes] = (state.resources[def.yieldRes] || 0) + def.yieldAmt;
-        toast(`+${def.yieldAmt} ${RESOURCE_INFO[def.yieldRes].icon} ${RESOURCE_INFO[def.yieldRes].name}`);
-        tile.stage = 'growing';
+    if (tile.key && isRightClick && tile.stage === 'ready') {
+        const def = BUILDABLES[tile.key];
+        
+        if (def.cat === 'crop') {
+            state.resources[def.yieldRes] = (state.resources[def.yieldRes] || 0) + def.yieldAmt;
+            toast(`+${def.yieldAmt} ${def.icon} ${def.name}`, 'success');
+        } else {
+            state.resources[def.outputRes] = (state.resources[def.outputRes] || 0) + def.outputAmt;
+            toast(`+${def.outputAmt} ${def.icon} ${def.name}`, 'success');
+        }
+        
+        // Reiniciar
+        tile.stage = def.cat === 'crop' ? 'growing' : 'idle';
         tile.progress = 0;
-      } else {
-        state.resources[def.outputRes] = (state.resources[def.outputRes] || 0) + def.outputAmt;
-        toast(`+${def.outputAmt} ${RESOURCE_INFO[def.outputRes].icon} ${RESOURCE_INFO[def.outputRes].name}`);
-        tile.stage = 'idle';
-        tile.progress = 0;
-      }
-      renderAll();
-      return;
+        
+        // Remover modelo antigo
+        if (tile.meshGroup) {
+            scene.remove(tile.meshGroup);
+            tile.meshGroup = null;
+        }
+        renderGrid3D();
+        updateUI();
+        updateSidebar();
+        return;
     }
-
-    // Dica para coletar
-    if(tile.key && !isRightClick && tile.stage === 'ready') {
-      toast(`${PLACEABLES[tile.key].icon} ${PLACEABLES[tile.key].name} pronto! Clique com botão direito para coletar.`);
+    
+    // Dica
+    if (tile.key && !isRightClick && tile.stage === 'ready') {
+        toast(`${tile.key} pronto! Clique direito para colher`, 'info');
     }
-  }
+}
 
-  function sellResource(res){
-    const qty = state.resources[res] || 0;
-    if(qty <= 0) return;
-    const gain = qty * SELL_PRICES[res];
-    state.resources[res] = 0;
-    state.coins += gain;
-    state.totalEarned += gain;
-    toast(`Vendido: +${fmt(gain)} 🪙`);
-    renderAll();
-  }
-
-  function generateOrder(){
-    const available = Object.keys(RESOURCE_MIN_LEVEL).filter(r => RESOURCE_MIN_LEVEL[r] <= getLevel());
-    if(available.length === 0) return;
-    const res = available[Math.floor(Math.random()*available.length)];
-    const qty = 2 + Math.floor(Math.random()*4);
-    const reward = Math.round(qty * SELL_PRICES[res] * 1.8);
-    state.orders.push({ id: orderIdCounter++, res, qty, reward });
-  }
-
-  function deliverOrder(id){
-    const order = state.orders.find(o => o.id === id);
-    if(!order) return;
-    if((state.resources[order.res] || 0) < order.qty){ toast('Recursos insuficientes.'); return; }
-    state.resources[order.res] -= order.qty;
-    state.coins += order.reward;
-    state.totalEarned += order.reward;
-    state.orders = state.orders.filter(o => o.id !== id);
-    toast(`Encomenda entregue! +${fmt(order.reward)} 🪙`);
-    renderAll();
-  }
-
-  function setTab(tab){ state.activeTab = tab; renderSidebar(); }
-
-  function expandGrid() {
-    const currentSize = state.grid.length;
-    if(currentSize >= MAX_GRID_SIZE) {
-      toast('🌾 Você já tem o máximo de terrenos disponível!');
-      return;
+function expandGrid() {
+    const currentSize = state.gridSize;
+    if (currentSize >= 8) {
+        toast('🌾 Máximo de terrenos atingido!', 'error');
+        return;
     }
     
     const level = getLevel();
-    const maxSlots = Math.min(4 + Math.floor(level / 2), 12);
-    const currentSlots = Math.floor(currentSize / 8);
+    const maxSlots = Math.min(4 + Math.floor(level / 2), 8);
     
-    if(currentSlots >= maxSlots) {
-      toast(`🔒 Desbloqueie mais terrenos subindo de nível! (Nível ${level} - ${maxSlots}x${maxSlots})`);
-      return;
+    if (currentSize >= maxSlots) {
+        toast(`🔒 Nível ${level} - máximo ${maxSlots}x${maxSlots}`, 'error');
+        return;
     }
     
-    const costIndex = currentSlots - 5;
-    if(costIndex < 0 || costIndex >= SLOT_UPGRADE_COST.length) {
-      toast('❌ Limite máximo atingido!');
-      return;
+    const costIndex = currentSize - 4;
+    if (costIndex < 0 || costIndex >= SLOT_UPGRADE_COST.length) {
+        toast('❌ Limite máximo!', 'error');
+        return;
     }
     
     const cost = SLOT_UPGRADE_COST[costIndex];
-    if(state.coins < cost) {
-      toast(`💰 Preciso de ${fmt(cost)} 🪙 para expandir!`);
-      return;
+    if (state.coins < cost) {
+        toast(`💰 Preciso de ${fmt(cost)} 🪙`, 'error');
+        return;
     }
     
     state.coins -= cost;
-    const newSize = currentSize + 8;
-    const newSlots = Array.from({length:8}, () => ({ key:null }));
-    state.grid = state.grid.concat(newSlots);
-    GRID_SIZE = newSize;
+    const newSize = currentSize + 1;
     state.gridSize = newSize;
     
-    toast(`🌾 Terreno expandido! +8 slots (${Math.floor(newSize/8)}x${Math.floor(newSize/8)})`);
-    renderAll();
-  }
-
-  /* ============ ANIMAÇÃO DOS ÍCONES ============ */
-  function getAnimatedContent(tile, def) {
-    const progress = tile.progress || 0;
-    let content = def.icon;
-    let animClass = '';
-    
-    if (tile.stage === 'growing') {
-      if (progress < 0.33) {
-        content = '🌱';
-        animClass = 'anim-sprout';
-      } else if (progress < 0.66) {
-        content = '🌿';
-        animClass = 'anim-grow';
-      } else {
-        content = def.icon;
-        animClass = 'anim-ready-grow';
-      }
+    // Adicionar novas linhas e colunas
+    const newGrid = [];
+    for (let row = 0; row < newSize; row++) {
+        for (let col = 0; col < newSize; col++) {
+            if (row < currentSize && col < currentSize) {
+                newGrid.push(state.grid[row * currentSize + col]);
+            } else {
+                newGrid.push({ key: null, stage: null, progress: 0, meshGroup: null });
+            }
+        }
     }
+    state.grid = newGrid;
     
-    if (tile.stage === 'processing') {
-      switch(tile.key) {
-        case 'mill':
-          content = '⚙️';
-          animClass = 'anim-mill';
-          break;
-        case 'coop':
-          content = progress < 0.4 ? '🥚' : '🐔';
-          animClass = progress < 0.4 ? 'anim-egg' : 'anim-chicken';
-          break;
-        case 'bakery':
-          content = progress < 0.5 ? '🥣' : '🍞';
-          animClass = 'anim-bake';
-          break;
-        case 'winery':
-          content = progress < 0.5 ? '🍇' : '🍷';
-          animClass = 'anim-winery';
-          break;
-        case 'candy_factory':
-          content = progress < 0.5 ? '🎃' : '🍬';
-          animClass = 'anim-candy';
-          break;
-        case 'cachaça_factory':
-          content = progress < 0.5 ? '🍷' : '🥃';
-          animClass = 'anim-cachaça';
-          break;
-        default:
-          animClass = '';
-      }
+    toast(`🌾 Expandido para ${newSize}x${newSize}!`, 'success');
+    renderGrid3D();
+    updateUI();
+    updateSidebar();
+}
+
+// ============================================================
+//  LOOP DE CRESCIMENTO
+// ============================================================
+function growPlants() {
+    let changed = false;
+    
+    state.grid.forEach((tile, idx) => {
+        if (!tile.key) return;
+        const def = BUILDABLES[tile.key];
+        if (!def) return;
+        
+        if (tile.stage === 'growing' || tile.stage === 'processing') {
+            const maxTime = def.growTime || def.time || 30;
+            tile.progress += 0.005 / (maxTime / 30);
+            
+            if (tile.progress >= 1) {
+                tile.progress = 1;
+                tile.stage = 'ready';
+                changed = true;
+                // Atualizar visual
+                if (tile.meshGroup) {
+                    scene.remove(tile.meshGroup);
+                    tile.meshGroup = null;
+                }
+                renderGrid3D();
+                toast(`⭐ ${def.name} pronto para colher!`, 'success');
+            } else if (tile.progress > 0 && tile.progress < 1) {
+                // Atualizar barra de progresso
+                if (tile.meshGroup) {
+                    // Remover barra antiga e recriar
+                    const oldBar = tile.meshGroup.children.find(c => c.type === 'Group' && c.children.length > 0 && c.children[0]?.material?.color?.getHex?.() === 0x333333);
+                    if (oldBar) {
+                        tile.meshGroup.remove(oldBar);
+                    }
+                    const newBar = createProgressBar(tile.progress);
+                    tile.meshGroup.add(newBar);
+                }
+            }
+        } else if (tile.stage === 'idle' && def.cat === 'factory') {
+            if (hasEnough(def.input)) {
+                consume(def.input);
+                tile.stage = 'processing';
+                tile.progress = 0;
+                changed = true;
+                // Atualizar visual
+                if (tile.meshGroup) {
+                    scene.remove(tile.meshGroup);
+                    tile.meshGroup = null;
+                }
+                renderGrid3D();
+                toast(`⚙️ ${def.name} iniciou produção!`, 'info');
+            }
+        }
+    });
+    
+    if (changed) {
+        updateUI();
+        updateSidebar();
     }
+}
+
+// ============================================================
+//  INTERFACE
+// ============================================================
+function updateUI() {
+    document.getElementById('coins-display').textContent = fmt(state.coins);
+    Object.keys(RESOURCES).forEach(res => {
+        const el = document.getElementById(`res-${res}`);
+        if (el) el.textContent = fmt(state.resources[res] || 0);
+    });
+}
+
+function updateSidebar() {
+    const container = document.getElementById('build-list');
+    const level = getLevel();
     
-    if (tile.stage === 'ready') {
-      animClass = 'anim-ready';
-    }
-    
-    return { content, animClass };
-  }
-
-  /* ============ RENDER ============ */
-  function renderHeader(){
-    const lvl = getLevel();
-    document.getElementById('header').innerHTML = `
-      <div class="title-block">
-        <div>
-          <h1>🏡 Vale Dourado</h1>
-          <div class="sub">Plante, produza e cumpra encomendas</div>
-        </div>
-        <div>
-          <div class="level-badge">Nível ${lvl}</div>
-          <div class="xp-track" style="margin-top:6px;"><div class="xp-fill" style="width:${xpProgress()}%"></div></div>
-        </div>
-      </div>
-      <div class="header-right">
-        ${Object.keys(RESOURCE_INFO).map(r => `
-          <div title="${RESOURCE_INFO[r].name}" style="font-size:.8rem; color:#e8dcb8; display:flex; gap:4px; align-items:center;">
-            <span>${RESOURCE_INFO[r].icon}</span><span>${fmt(state.resources[r] || 0)}</span>
-          </div>`).join('')}
-        <div class="coin-pill">🪙 ${fmt(state.coins)}</div>
-        <button class="icon-btn ${state.destroyMode ? 'danger' : ''}" data-action="destroy">${state.destroyMode ? '🗑️' : '🔧'}</button>
-        <button class="icon-btn" data-action="save">💾 Salvar</button>
-        <button class="icon-btn" data-action="load">📂 Carregar</button>
-        <button id="music-toggle" class="icon-btn music-off" data-action="toggle-music">🔇 Música</button>
-      </div>
-    `;
-    updateMusicButton();
-  }
-
-  function renderSidebar(){
-    const lvl = getLevel();
-    let body = '';
-
-    if(state.activeTab === 'build'){
-      body = `
-        <div class="slot-card" style="background:var(--gold); border-color:var(--gold-dark);">
-          <div class="card-icon">🌾</div>
-          <div class="card-body">
-            <div class="card-title">Expandir Terreno</div>
-            <div class="card-meta">${Math.floor(state.grid.length/8)}x${Math.floor(state.grid.length/8)} · ${state.grid.length}/${MAX_GRID_SIZE}</div>
-          </div>
-          <button class="card-btn slot" data-action="expand">🪙 ${fmt(SLOT_UPGRADE_COST[Math.floor(state.grid.length/8)-5] || 9999)}</button>
-        </div>
-      `;
-      
-      body += Object.entries(PLACEABLES).map(([key,def]) => {
-        const locked = lvl < def.levelReq;
+    let html = '';
+    Object.entries(BUILDABLES).forEach(([key, def]) => {
+        const locked = level < def.levelReq;
         const selected = state.selectedBuild === key;
-        const timeDisplay = def.cat === 'crop' ? `${def.growTime}s` : `${def.time}s`;
-        const costLine = def.cat === 'crop'
-          ? `Colheita: +${def.yieldAmt} ${RESOURCE_INFO[def.yieldRes].icon} a cada ${timeDisplay}`
-          : `Usa ${Object.entries(def.input).map(([r,q])=>`${q} ${RESOURCE_INFO[r].icon}`).join(' + ')} → +${def.outputAmt} ${RESOURCE_INFO[def.outputRes].icon} (${timeDisplay})`;
-        return `
-          <div class="build-card ${selected?'selected':''} ${locked?'locked':''}">
-            <div class="card-icon">${def.icon}</div>
-            <div class="card-body">
-              <div class="card-title">${def.name}</div>
-              <div class="card-meta">${costLine}</div>
-              ${locked ? `<div class="lock-tag">🔒 Desbloqueia no nível ${def.levelReq}</div>` : ''}
+        const costStr = def.cat === 'crop' 
+            ? `🪙 ${def.cost} · ${def.growTime}s`
+            : `🪙 ${def.cost} · ${def.time}s`;
+        
+        html += `
+            <div class="sidebar-item ${selected ? 'selected' : ''}" data-build="${key}">
+                <div>
+                    <span class="icon">${def.icon}</span>
+                    <span class="name">${def.name}</span>
+                    ${locked ? '<span class="locked">🔒</span>' : ''}
+                    <div class="info">${costStr}</div>
+                </div>
+                <div>
+                    ${selected ? '✅' : locked ? '🔒' : '🪙'}
+                </div>
             </div>
-            <button class="card-btn build" data-build-key="${key}" ${locked?'disabled':''}>
-              ${selected ? '✅' : `🪙 ${def.cost}`}
-            </button>
-          </div>`;
-      }).join('');
-    }
-
-    if(state.activeTab === 'sell'){
-      const any = Object.keys(RESOURCE_INFO).some(r => (state.resources[r] || 0) > 0);
-      body = any ? Object.keys(RESOURCE_INFO).map(r => {
-        const qty = state.resources[r] || 0;
-        if(qty <= 0) return '';
-        return `
-          <div class="sell-card">
-            <div class="card-icon">${RESOURCE_INFO[r].icon}</div>
-            <div class="card-body">
-              <div class="card-title">${RESOURCE_INFO[r].name}</div>
-              <div class="card-meta">${fmt(qty)} em estoque · ${SELL_PRICES[r]} 🪙 cada</div>
-            </div>
-            <button class="card-btn sell" data-sell-res="${r}">Vender (+${fmt(qty*SELL_PRICES[r])})</button>
-          </div>`;
-      }).join('') : `<div class="empty-hint">Colha ou produza recursos para poder vendê-los aqui.</div>`;
-    }
-
-    if(state.activeTab === 'orders'){
-      body = state.orders.length ? state.orders.map(o => {
-        const can = (state.resources[o.res] || 0) >= o.qty;
-        return `
-          <div class="order-card">
-            <div class="card-icon">${RESOURCE_INFO[o.res].icon}</div>
-            <div class="card-body">
-              <div class="card-title">${o.qty}x ${RESOURCE_INFO[o.res].name}</div>
-              <div class="card-meta">Recompensa: ${fmt(o.reward)} 🪙</div>
-            </div>
-            <button class="card-btn deliver" data-order-id="${o.id}" ${can?'':'disabled'}>Entregar</button>
-          </div>`;
-      }).join('') : `<div class="empty-hint">Nenhuma encomenda no momento. Volte em breve!</div>`;
-    }
-
-    document.getElementById('sidebar').innerHTML = `
-      <div class="tabs">
-        <div class="tab ${state.activeTab==='build'?'active':''}" data-tab="build">🏗️ Construir</div>
-        <div class="tab ${state.activeTab==='sell'?'active':''}" data-tab="sell">💰 Vender</div>
-        <div class="tab ${state.activeTab==='orders'?'active':''}" data-tab="orders">📦 Encomendas ${state.orders.length?`(${state.orders.length})`:''}</div>
-      </div>
-      <div class="sidebar-body">${body}</div>
-    `;
-  }
-
-  function renderGrid(){
-    const slot = document.getElementById('placing-banner-slot');
-    let bannerHTML = '';
+        `;
+    });
     
-    if(state.destroyMode) {
-      bannerHTML = `
-        <div class="placing-banner" style="background:var(--danger);">
-          <span>🗑️ Modo destruir ativado — Clique em uma construção para removê-la (reembolso de 50%)</span>
-          <button data-action="destroy">Desativar</button>
-        </div>`;
-    } else if(state.selectedBuild) {
-      bannerHTML = `
-        <div class="placing-banner">
-          <span>${PLACEABLES[state.selectedBuild].icon} Clique com botão esquerdo para construir ${PLACEABLES[state.selectedBuild].name}</span>
-          <div>
-            <span class="mode-badge">🖱️ Esquerdo: construir</span>
-            <button data-action="cancel-build">Cancelar</button>
-          </div>
-        </div>`;
-    }
-    slot.innerHTML = bannerHTML;
+    container.innerHTML = html;
+    
+    // Eventos
+    container.querySelectorAll('.sidebar-item').forEach(el => {
+        el.addEventListener('click', () => {
+            selectBuild(el.dataset.build);
+        });
+    });
+}
 
-    const cols = Math.floor(Math.sqrt(GRID_SIZE));
-    document.getElementById('grid').style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-
-    document.getElementById('grid').innerHTML = state.grid.map((tile, i) => {
-      if(!tile.key){
-        const placeable = !!state.selectedBuild && !state.destroyMode;
-        return `<div class="tile empty ${placeable?'placeable':''} ${state.destroyMode?'destroy-mode':''}" data-tile-index="${i}"></div>`;
-      }
-      const def = PLACEABLES[tile.key];
-      if(!def) return `<div class="tile empty" data-tile-index="${i}"></div>`;
-      const pct = Math.round(tile.progress*100);
-      const showProgress = tile.stage === 'growing' || tile.stage === 'processing';
-      const { content, animClass } = getAnimatedContent(tile, def);
-      
-      return `
-        <div class="tile occupied ${tile.stage} ${state.destroyMode?'destroy-mode':''}" data-tile-index="${i}" title="${def.name}">
-          ${tile.stage === 'ready' ? '<span class="ready-mark">⭐</span>' : ''}
-          <span class="${animClass}">${content}</span>
-          ${showProgress ? `<div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>` : ''}
-          ${tile.stage === 'ready' && !state.destroyMode ? '<div class="collect-hint">🖱️ Direito para colher</div>' : ''}
-          ${state.destroyMode ? '<div class="collect-hint" style="background:var(--danger);">🗑️ Clique para remover</div>' : ''}
-        </div>`;
-    }).join('');
-  }
-
-  function renderAll(){ renderHeader(); renderSidebar(); renderGrid(); }
-
-  /* ============ SALVAR / CARREGAR ============ */
-  function saveGame(){
+// ============================================================
+//  SALVAR / CARREGAR
+// ============================================================
+function saveGame() {
     try {
-      const saveData = JSON.stringify(state);
-      const blob = new Blob([saveData], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; 
-      a.download = `vale-dourado-save-${new Date().toISOString().slice(0,10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast('💾 Jogo salvo com sucesso!');
-    } catch(e) {
-      toast('❌ Erro ao salvar: ' + e.message);
-      console.error('Save error:', e);
+        const saveData = JSON.stringify({
+            coins: state.coins,
+            totalEarned: state.totalEarned,
+            resources: state.resources,
+            grid: state.grid.map(t => ({
+                key: t.key,
+                stage: t.stage,
+                progress: t.progress,
+            })),
+            gridSize: state.gridSize,
+        });
+        const blob = new Blob([saveData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vale-dourado-3d-save-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('💾 Jogo salvo!', 'success');
+    } catch (e) {
+        toast('❌ Erro ao salvar', 'error');
     }
-  }
+}
 
-  function loadGame(file){
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const loaded = JSON.parse(e.target.result);
+function loadGame() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const loaded = JSON.parse(ev.target.result);
+                state.coins = loaded.coins;
+                state.totalEarned = loaded.totalEarned;
+                state.resources = loaded.resources;
+                state.gridSize = loaded.gridSize || GRID_SIZE;
+                state.grid = loaded.grid.map(t => ({
+                    key: t.key,
+                    stage: t.stage,
+                    progress: t.progress || 0,
+                    meshGroup: null,
+                }));
+                state.selectedBuild = null;
+                state.destroyMode = false;
+                
+                // Reconstruir cena
+                renderGrid3D();
+                updateUI();
+                updateSidebar();
+                toast('✅ Jogo carregado!', 'success');
+            } catch (err) {
+                toast('❌ Arquivo inválido', 'error');
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+// ============================================================
+//  EVENTOS
+// ============================================================
+// Click no tile
+renderer.domElement.addEventListener('click', (e) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Verificar colisão com tiles
+    const tileGroups = tileMeshes.filter(m => m.children.length > 0);
+    const intersects = raycaster.intersectObjects(tileGroups, true);
+    
+    if (intersects.length > 0) {
+        let target = intersects[0].object;
+        let group = target.parent;
+        while (group && !tileMeshes.includes(group)) {
+            group = group.parent;
+        }
+        if (group && tileMeshes.includes(group)) {
+            const idx = tileData.find(d => d.group === group)?.idx;
+            if (idx !== undefined) {
+                handleTileClick(idx, false);
+            }
+        }
+    }
+});
+
+// Clique direito
+renderer.domElement.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const rect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    
+    const tileGroups = tileMeshes.filter(m => m.children.length > 0);
+    const intersects = raycaster.intersectObjects(tileGroups, true);
+    
+    if (intersects.length > 0) {
+        let target = intersects[0].object;
+        let group = target.parent;
+        while (group && !tileMeshes.includes(group)) {
+            group = group.parent;
+        }
+        if (group && tileMeshes.includes(group)) {
+            const idx = tileData.find(d => d.group === group)?.idx;
+            if (idx !== undefined) {
+                handleTileClick(idx, true);
+            }
+        }
+    }
+});
+
+// Botões UI
+document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('hidden');
+});
+
+document.getElementById('btn-save').addEventListener('click', saveGame);
+document.getElementById('btn-load').addEventListener('click', loadGame);
+document.getElementById('btn-destroy-mode').addEventListener('click', toggleDestroyMode);
+document.getElementById('btn-expand').addEventListener('click', expandGrid);
+
+// Redimensionar
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================
+//  ANIMAÇÃO
+// ============================================================
+let time = 0;
+
+function animate() {
+    requestAnimationFrame(animate);
+    
+    time += 0.016;
+    
+    // Atualizar animações dos modelos
+    tileData.forEach(({ tile, group }) => {
+        if (!tile.key) return;
+        const def = BUILDABLES[tile.key];
+        if (!def) return;
         
-        if (!loaded || typeof loaded !== 'object') throw new Error('Arquivo inválido');
-        if (!loaded.grid || !Array.isArray(loaded.grid)) throw new Error('Grid inválido');
-        if (!loaded.resources || typeof loaded.resources !== 'object') throw new Error('Recursos inválidos');
-        if (typeof loaded.coins !== 'number' || typeof loaded.totalEarned !== 'number') throw new Error('Dados de moedas inválidos');
-        
-        state.coins = loaded.coins;
-        state.totalEarned = loaded.totalEarned;
-        state.resources = loaded.resources;
-        state.grid = loaded.grid;
-        state.orders = loaded.orders || [];
-        state.nextOrderIn = loaded.nextOrderIn || 8;
-        state.selectedBuild = null;
-        state.activeTab = 'build';
-        state.destroyMode = false;
-        state.gridSize = loaded.gridSize || loaded.grid.length;
-        GRID_SIZE = state.gridSize;
-        
-        if (loaded.orders && loaded.orders.length > 0) {
-          const maxId = Math.max(...loaded.orders.map(o => o.id || 0));
-          orderIdCounter = Math.max(maxId + 1, 1);
-        } else {
-          orderIdCounter = 1;
+        // Rotacionar moinhos
+        if (tile.key === 'mill' && tile.stage === 'processing') {
+            const stone = group?.children.find(c => c.type === 'Group')?.children.find(c => c.userData?.rotating);
+            if (stone) {
+                stone.rotation.y += 0.05;
+            }
         }
         
-        renderAll();
-        toast('✅ Progresso carregado com sucesso!');
-      } catch(err) {
-        toast('❌ Erro ao carregar: ' + err.message);
-        console.error('Load error:', err);
-      }
-    };
-    reader.onerror = function() {
-      toast('❌ Erro ao ler o arquivo');
-    };
-    reader.readAsText(file);
-  }
+        // Balançar plantas
+        if (def.cat === 'crop' && tile.stage === 'growing') {
+            const plant = group?.children.find(c => c.type === 'Group');
+            if (plant) {
+                const sway = Math.sin(time * 1.5 + (group.position.x + group.position.z) * 2) * 0.02;
+                plant.rotation.z = sway;
+            }
+        }
+        
+        // Animar marcador de pronto
+        if (tile.stage === 'ready') {
+            const marker = group?.children.find(c => c.type === 'Group' && c.children.length > 0 && c.children[0]?.geometry?.type === 'RingGeometry');
+            if (marker) {
+                marker.rotation.y += 0.01;
+                const scale = 1 + Math.sin(time * 2) * 0.05;
+                marker.scale.set(scale, scale, scale);
+            }
+        }
+    });
+    
+    controls.update();
+    renderer.render(scene, camera);
+}
 
-  /* ============ EVENTOS (delegação) ============ */
-  document.addEventListener('click', e => {
-    const buildBtn = e.target.closest('[data-build-key]');
-    if(buildBtn){ selectBuild(buildBtn.dataset.buildKey); return; }
+// ============================================================
+//  LOOP PRINCIPAL
+// ============================================================
+function gameLoop() {
+    growPlants();
+    setTimeout(gameLoop, 1000);
+}
 
-    const tileEl = e.target.closest('[data-tile-index]');
-    if(tileEl){ 
-      e.preventDefault();
-      handleTileClick(Number(tileEl.dataset.tileIndex), false); 
-      return; 
-    }
+// ============================================================
+//  INICIAR
+// ============================================================
+renderGrid3D();
+updateUI();
+updateSidebar();
+animate();
+gameLoop();
 
-    const sellBtn = e.target.closest('[data-sell-res]');
-    if(sellBtn){ sellResource(sellBtn.dataset.sellRes); return; }
+toast('🏡 Bem-vindo ao Vale Dourado 3D!', 'success');
 
-    const orderBtn = e.target.closest('[data-order-id]');
-    if(orderBtn){ deliverOrder(Number(orderBtn.dataset.orderId)); return; }
+console.log('🏡 Vale Dourado 3D iniciado!');
+console.log('🌾 Clique em um tile vazio para construir');
+console.log('🖱️ Clique direito para colher');
+console.log('🔧 Use o botão "Modo Destruir" para remover construções');
 
-    const tabEl = e.target.closest('[data-tab]');
-    if(tabEl){ setTab(tabEl.dataset.tab); return; }
-
-    const actionEl = e.target.closest('[data-action]');
-    if(actionEl){
-      const action = actionEl.dataset.action;
-      if(action === 'save') saveGame();
-      if(action === 'load') document.getElementById('load-input').click();
-      if(action === 'cancel-build'){ state.selectedBuild = null; renderAll(); }
-      if(action === 'toggle-music') toggleMusic();
-      if(action === 'destroy') toggleDestroyMode();
-      if(action === 'expand') expandGrid();
-      return;
-    }
-  });
-
-  document.addEventListener('contextmenu', e => {
-    const tileEl = e.target.closest('[data-tile-index]');
-    if(tileEl && !state.destroyMode) {
-      e.preventDefault();
-      handleTileClick(Number(tileEl.dataset.tileIndex), true);
-    }
-  });
-
-  document.getElementById('load-input').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if(file) {
-      loadGame(file);
-    }
-    e.target.value = '';
-  });
-
-  /* ============ START ============ */
-  renderAll();
-  setInterval(tick, 200);
-
-  document.addEventListener('click', function initAudioOnClick() {
-    if (!isMusicPlaying) {
-      try { initAudio(); } catch(e) {}
-    }
-    document.removeEventListener('click', initAudioOnClick);
-  }, { once: true });
-
-})();
+// ============================================================
+//  EXPORTAR PARA DEBUG
+// ============================================================
+window.__game = {
+    state,
+    scene,
+    camera,
+    controls,
+    renderer,
+    BUILDABLES,
+    RESOURCES,
+    addModelToTile,
+    renderGrid3D,
+    handleTileClick,
+    growPlants,
+    saveGame,
+    loadGame,
+};
 </script>
 </body>
 </html>
